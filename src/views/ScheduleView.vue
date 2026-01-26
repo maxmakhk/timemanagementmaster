@@ -90,7 +90,26 @@ const allowDrop = (e) => {
 
 // 開始模擬
 const startSimulation = () => {
-  // TODO: 驗證時間表是否有效
+  // 驗證至少有一個 NPC 被選擇
+  if (selectedNPCs.value.length === 0) {
+    alert('請先選擇至少一個 NPC')
+    return
+  }
+
+  // 將數據保存到 sessionStorage 以便 DaySimulationView 使用
+  const simulationData = {
+    selectedNPCs: selectedNPCs.value.map(npc => ({
+      id: npc.id,
+      name: npc.name,
+      image: npc.image,
+      goals: npc.goals,
+      initial: npc.initial,
+    })),
+    npcSchedules: npcSchedules,
+    npcCurrentAbilities: npcCurrentAbilities,
+  }
+  
+  sessionStorage.setItem('simulationData', JSON.stringify(simulationData))
   router.push('/day')
 }
 

@@ -1,41 +1,138 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const { t } = useI18n()
 
-const currentDay = ref(1)
-const totalDays = 10
+// 模擬數據
+const simulationData = ref(null)
+const currentDay = ref(0)
+const currentNPCIndex = ref(0)
+const logs = ref([])
 
-// 示例行程和日誌
-const todaySchedule = [
-  { time: '08:00', activity: 'Coding Class', effect: { coding: 5 } },
-  { time: '10:00', activity: 'Math Study', effect: { math: 5 } },
-  { time: '12:00', activity: 'Lunch', effect: { energy: 5 } },
-  { time: '14:00', activity: 'Fitness', effect: { fitness: 5 } },
-]
+// 計算出總共要模擬的天數和 NPC 數量
+const totalDays = 5 // 改為 5 天（與 ScheduleView 一致）
 
-// 示例日誌
-const logs = ref([
-  'Day 1 開始',
-  '08:00 - Alice 參加 Coding Class，獲得 +5 Coding 經驗',
-  '10:00 - Alice 進行 Math Study，獲得 +5 Math 經驗',
-  '12:00 - Alice 吃午餐，精力恢復 +5',
-  '14:00 - Alice 進行 Fitness 訓練，獲得 +5 Fitness 經驗',
-  '心情值：95/100',
-  '能量值：80/100',
-])
+// 當前 NPC
+const currentNPC = computed(() => {
+  if (!simulationData.value) return null
+  return simulationData.value.selectedNPCs[currentNPCIndex.value]
+})
 
-// 下一天
-const nextDay = () => {
-  if (currentDay.value < totalDays) {
-    currentDay.value++
-    // TODO: 更新行程和日誌
+// 當前 NPC 的當前能力值
+const currentAbilities = computed(() => {
+  if (!simulationData.value || !currentNPC.value) return null
+  return simulationData.value.npcCurrentAbilities[currentNPC.value.id] || {}
+})
+
+// 當前 NPC 在當前天的行程
+const todaySchedule = computed(() => {
+  if (!simulationData.value || !currentNPC.value) return []
+  
+  const schedule = simulationData.value.npcSchedules[currentNPC.value.id]
+  if (!schedule || !schedule[currentDay.value]) return []
+  
+  return schedule[currentDay.value]
+    .map((card, slotIndex) => {
+      if (!card) return null
+      return {
+        slotIndex,
+        time: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'][slotIndex],
+        activity: card.name,
+        effect: card.effect
+      }
+    })
+    .filter(item => item !== null)
+})
+
+// 載入模擬數據
+onMounted(() => {
+  const data = sessionStorage.getItem('simulationData')
+  if (data) {
+    simulationData.value = JSON.parse(data)
+    startDaySimulation()
   } else {
-    // 完成所有 10 天，進入報告頁面
-    router.push('/report')
+    alert('無法載入模擬數據')
+    router.push('/schedule')
+  }
+})
+
+// 執行當天的模擬
+const startDaySimulation = () => {
+  logs.value = []
+  
+  if (!currentNPC.value) return
+  
+  // 開始日誌
+  logs.value.push(`📅 第 ${currentDay.value + 1} 天 - ${currentNPC.value.name} 的日程`)
+  logs.value.push('---')
+  
+  // 執行當天的每一個行程
+  let totalCoding = 0
+  let totalMath = 0
+  let totalFitness = 0
+  
+  if (todaySchedule.value.length === 0) {
+    logs.value.push('✗ 今天沒有安排行程')
+  } else {
+    todaySchedule.value.forEach(item => {
+      logs.value.push(`⏰ ${item.time} - ${item.activity}`)
+      
+      // 計算效果
+      if (item.effect.coding) {
+        totalCoding += item.effect.coding
+        logs.value.push(`  ✓ 編程能力 +${item.effect.coding}`)
+      }
+      if (item.effect.math) {
+        totalMath += item.effect.math
+        logs.value.push(`  ✓ 數學能力 +${item.effect.math}`)
+      }
+      if (item.effect.fitness) {
+        totalFitness += item.effect.fitness
+        logs.value.push(`  ✓ 身體素質 +${item.effect.fitness}`)
+      }
+      if (item.effect.mood) {
+        logs.value.push(`  ✓ 心情 +${item.effect.mood}`)
+      }
+      if (item.effect.energy) {
+        logs.value.push(`  ✓ 精力恢復 +${item.effect.energy}`)
+      }
+    })
+    
+    logs.value.push('---')
+    logs.value.push(`📊 今日總進度：`)
+    logs.value.push(`  編程：${currentAbilities.value.coding} → ${currentAbilities.value.coding + totalCoding}`)
+    logs.value.push(`  數學：${currentAbilities.value.math} → ${currentAbilities.value.math + totalMath}`)
+    logs.value.push(`  身體：${currentAbilities.value.fitness} → ${currentAbilities.value.fitness + totalFitness}`)
+    
+    // 更新當前能力值
+    currentAbilities.value.coding += totalCoding
+    currentAbilities.value.math += totalMath
+    currentAbilities.value.fitness += totalFitness
+    
+    logs.value.push('✅ 一天結束')
+  }
+}
+
+// 下一天或下一個 NPC
+const nextDay = () => {
+  // 先移到下一個 NPC（同一天）
+  if (currentNPCIndex.value < simulationData.value.selectedNPCs.length - 1) {
+    currentNPCIndex.value++
+    startDaySimulation()
+  } else {
+    // 所有 NPC 都完成了這一天，移到下一天
+    currentNPCIndex.value = 0
+    
+    if (currentDay.value < totalDays - 1) {
+      currentDay.value++
+      startDaySimulation()
+    } else {
+      // 完成所有天數，進入報告頁面
+      router.push('/report')
+    }
   }
 }
 
@@ -48,22 +145,32 @@ const endSimulation = () => {
 const goBack = () => {
   router.push('/schedule')
 }
+
+// 計算進度百分比
+const progressPercent = computed(() => {
+  const totalNPCs = simulationData.value?.selectedNPCs.length || 1
+  const totalItems = totalDays * totalNPCs
+  const currentItem = currentDay.value * totalNPCs + currentNPCIndex.value + 1
+  return (currentItem / totalItems) * 100
+})
 </script>
 
 <template>
   <div class="day-simulation-view">
     <header class="simulation-header">
-      <h1>{{ $t('day.title') }} - {{ $t('day.day') }} {{ currentDay }} {{ $t('day.of') }} {{ totalDays }} {{ $t('day.of').split('/')[1] ? '' : '' }}</h1>
+      <h1 v-if="currentNPC">
+        {{ $t('day.title') }} - 第 {{ currentDay + 1 }} 天 / {{ totalDays }} 天 ({{ currentNPC.name }})
+      </h1>
       <div class="progress-bar">
-        <div class="progress" :style="{ width: (currentDay / totalDays) * 100 + '%' }"></div>
+        <div class="progress" :style="{ width: progressPercent + '%' }"></div>
       </div>
     </header>
 
-    <div class="simulation-container">
+    <div v-if="simulationData" class="simulation-container">
       <!-- 上半部分：今日行程 -->
       <div class="schedule-section">
-        <h2>{{ $t('day.todaySchedule') }}</h2>
-        <div class="schedule-table">
+        <h2>{{ currentNPC?.name }} - {{ $t('day.todaySchedule') }}</h2>
+        <div v-if="todaySchedule.length > 0" class="schedule-table">
           <div v-for="(item, index) in todaySchedule" :key="index" class="schedule-row">
             <div class="time">{{ item.time }}</div>
             <div class="activity">{{ item.activity }}</div>
@@ -73,6 +180,9 @@ const goBack = () => {
               </span>
             </div>
           </div>
+        </div>
+        <div v-else class="no-schedule">
+          ✗ 今天沒有安排行程
         </div>
       </div>
 
@@ -85,6 +195,34 @@ const goBack = () => {
           </div>
         </div>
       </div>
+
+      <!-- 當前能力值顯示 -->
+      <div class="abilities-section">
+        <h2>{{ currentNPC?.name }} 當前能力值</h2>
+        <div class="abilities-grid">
+          <div class="ability-card">
+            <div class="ability-name">📚 編程</div>
+            <div class="ability-bar">
+              <div class="ability-fill" :style="{ width: (currentAbilities?.coding / 100 * 100) + '%' }"></div>
+            </div>
+            <div class="ability-value">{{ currentAbilities?.coding || 0 }}</div>
+          </div>
+          <div class="ability-card">
+            <div class="ability-name">🔢 數學</div>
+            <div class="ability-bar">
+              <div class="ability-fill" :style="{ width: (currentAbilities?.math / 100 * 100) + '%' }"></div>
+            </div>
+            <div class="ability-value">{{ currentAbilities?.math || 0 }}</div>
+          </div>
+          <div class="ability-card">
+            <div class="ability-name">💪 身體</div>
+            <div class="ability-bar">
+              <div class="ability-fill" :style="{ width: (currentAbilities?.fitness / 100 * 100) + '%' }"></div>
+            </div>
+            <div class="ability-value">{{ currentAbilities?.fitness || 0 }}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 底部按鈕 -->
@@ -92,8 +230,19 @@ const goBack = () => {
       <button @click="goBack" class="btn btn-secondary">
         {{ $t('day.goBack') }}
       </button>
-      <button @click="nextDay" class="btn btn-primary">
-        {{ currentDay === totalDays ? $t('day.viewReport') : $t('day.nextDay') }}
+      <button 
+        v-if="currentDay === totalDays - 1 && currentNPCIndex === (simulationData?.selectedNPCs.length || 1) - 1"
+        @click="endSimulation"
+        class="btn btn-primary"
+      >
+        {{ $t('day.viewReport') }}
+      </button>
+      <button 
+        v-else
+        @click="nextDay"
+        class="btn btn-primary"
+      >
+        {{ $t('day.nextDay') }}
       </button>
     </div>
   </div>
@@ -192,7 +341,68 @@ const goBack = () => {
   border-radius: 0.3rem;
 }
 
-/* 日誌部分 */
+.no-schedule {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+  font-size: 1.1rem;
+}
+
+/* 能力值部分 */
+.abilities-section {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 1rem;
+}
+
+.abilities-section h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+}
+
+.abilities-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.ability-card {
+  background: #f9f9f9;
+  border: 2px solid #e8e8f0;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.ability-name {
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  font-size: 1rem;
+}
+
+.ability-bar {
+  height: 20px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.ability-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.ability-value {
+  font-weight: 600;
+  color: #667eea;
+  font-size: 1.2rem;
+}
+
+
 .log-section {
   flex: 1;
   background: white;
