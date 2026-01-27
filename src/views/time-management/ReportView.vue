@@ -32,11 +32,17 @@ const getProgress = (actual, goal) => {
 
 // 開始下一學期
 const nextSemester = () => {
-  router.push('/intake')
+  // 清除遊戲數據，開始新學期
+  sessionStorage.removeItem('simulationData')
+  sessionStorage.removeItem('selectedNPCs')
+  router.push('/time-management/intake')
 }
 
 // 返回首頁
 const goHome = () => {
+  // 清除遊戲數據
+  sessionStorage.removeItem('simulationData')
+  sessionStorage.removeItem('selectedNPCs')
   router.push('/')
 }
 </script>

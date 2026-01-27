@@ -17,6 +17,7 @@ const selectedNPCId = ref(null) // Currently selected NPC tab
 
 // Header animation state
 const headerTimeLabel = ref('')
+const runTime = 100;
 
 // Simulation state
 const isSimulationRunning = ref(false)
@@ -162,7 +163,7 @@ onMounted(() => {
     startAllNPCSimulations()
   } else {
     alert('無法載入模擬數據')
-    router.push('/schedule')
+    router.push('/time-management/schedule')
   }
 })
 
@@ -285,10 +286,61 @@ const simulateNPCDay = async (npc, npcIndex) => {
     })
     .filter(item => item !== null)
   
-  if (scheduleItems.length === 0) {
+  // Check if this is exam day
+  const npcRequiredDays = npc.requiredDays || 5
+  const npcExtendedDays = simulationData.value?.extendedDays?.[npc.id]
+  const npcMaxDays = npcExtendedDays || npcRequiredDays
+  const isNPCExamDay = currentDay.value === npcMaxDays
+  
+  if (isNPCExamDay) {
+    // This is exam day - show exam instead of regular schedule
+    npcLogs.push('📝 今天是考試日！')
+    npcLogs.push('---')
+    headerTimeLabel.value = '考試中'
+    
+    await delay(runTime)
+    
+    // Calculate and show exam results
+    const examResults = calculateExamResults()
+    if (examResults) {
+      npcLogs.push('🎓 === 考試結果 === 🎓')
+      npcLogs.push('---')
+      npcLogs.push(`📋 考試嘗試次數: #${examResults.examAttempt}`)
+      npcLogs.push('---')
+      npcLogs.push('📊 技能評估：')
+      
+      examResults.skillResults.forEach(skill => {
+        const status = skill.passed ? '✅ 通過' : '❌ 未通過'
+        const bar = '█'.repeat(Math.floor(skill.percentage / 10)) + '░'.repeat(10 - Math.floor(skill.percentage / 10))
+        npcLogs.push(`  ${skill.emoji} ${skill.name}: ${skill.current}/${skill.goal} (${skill.percentage}%) ${status}`)
+        npcLogs.push(`     ${bar}`)
+      })
+      
+      npcLogs.push('---')
+      npcLogs.push(`📈 總體通過率: ${examResults.passedSkills}/3 技能`)
+      
+      if (examResults.passed) {
+        npcLogs.push('🎉 === 考試通過！ === 🎉')
+        npcLogs.push(`🏆 獲得聲望: ${examResults.finalReward}`)
+        npcLogs.push('✨ 恭喜完成任務！')
+      } else {
+        npcLogs.push('😔 === 考試未通過 === 😔')
+        npcLogs.push(`⚠️ ${3 - examResults.passedSkills} 個技能未達標`)
+        npcLogs.push('💡 建議：需要更多學習時間')
+        if (examResults.examAttempt > 1) {
+          npcLogs.push(`📉 聲望獎勵已降低: ${examResults.originalReward} → ${examResults.finalReward} (-${Math.round((1 - examResults.finalReward / examResults.originalReward) * 100)}%)`)
+        }
+      }
+      
+      npcLogs.push('---')
+    }
+    
+    headerTimeLabel.value = '考試完成'
+    await delay(runTime)
+  } else if (scheduleItems.length === 0) {
     npcLogs.push('✗ 今天沒有安排行程')
     headerTimeLabel.value = '無行程'
-    await delay(1000)
+    await delay(runTime)
   } else {
     let totalCoding = 0
     let totalMath = 0
@@ -307,7 +359,7 @@ const simulateNPCDay = async (npc, npcIndex) => {
       abilities.math += gains.math
       abilities.fitness += gains.fitness
       
-      await delay(1000) // 1 second delay between activities
+      await delay(runTime) // 1 second delay between activities
     }
     
     npcLogs.push('---')
@@ -318,7 +370,7 @@ const simulateNPCDay = async (npc, npcIndex) => {
     npcLogs.push(`  精力：${abilities.energy}`)
     npcLogs.push(`  心情：${abilities.mood}`)
     
-    await delay(1000)
+    await delay(runTime)
     
     npcLogs.push('✅ 一天結束')
     headerTimeLabel.value = '完成'
@@ -347,7 +399,11 @@ const startAllNPCSimulations = async () => {
 // Check if today is exam day
 const isExamDay = computed(() => {
   if (!currentNPC.value) return false
-  return currentDay.value >= currentNPC.value.requiredDays - 1
+  const requiredDays = currentNPC.value.requiredDays || 5
+  const extendedDays = simulationData.value?.extendedDays?.[currentNPC.value.id]
+  const maxDays = extendedDays || requiredDays
+  // Exam day is the day after required days complete
+  return currentDay.value === maxDays
 })
 
 // 計算考試結果
@@ -490,11 +546,11 @@ const completeDay = () => {
       // Check if there are more NPCs
       if (simulationData.value.currentNPCIndex < simulationData.value.selectedNPCs.length) {
         setTimeout(() => {
-          router.push('/schedule')
+          router.push('/time-management/schedule')
         }, 3000) // Give user time to read results
       } else {
         setTimeout(() => {
-          router.push('/report')
+          router.push('/time-management/report')
         }, 3000)
       }
     } else if (examResults) {
@@ -502,17 +558,18 @@ const completeDay = () => {
       const originalRequired = currentNPC.value.requiredDays
       const npcId = currentNPC.value.id
       
-      simulationData.value.currentDay = originalRequired
+      // Continue from day after exam (e.g., if exam was day 6, continue from day 7)
+      simulationData.value.currentDay = originalRequired + 1
       simulationData.value.examAttempt = (simulationData.value.examAttempt || 1) + 1
       
-      // Extend days by 5
+      // Extend days by 5 more training days (e.g., 5 days + 1 exam day + 5 more days = 11 total, exam on day 12)
       simulationData.value.extendedDays = simulationData.value.extendedDays || {}
-      simulationData.value.extendedDays[npcId] = originalRequired + 5
+      simulationData.value.extendedDays[npcId] = originalRequired + 1 + 5
       
       sessionStorage.setItem('simulationData', JSON.stringify(simulationData.value))
       
       setTimeout(() => {
-        router.push('/schedule')
+        router.push('/time-management/schedule')
       }, 3000) // Give user time to read results
     }
   } else {
@@ -521,7 +578,7 @@ const completeDay = () => {
     simulationData.value.currentDay = currentDay.value
     
     sessionStorage.setItem('simulationData', JSON.stringify(simulationData.value))
-    router.push('/schedule')
+    router.push('/time-management/schedule')
   }
 }
 

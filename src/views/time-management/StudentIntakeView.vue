@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { NPCQuests, getAvailableQuests, calculateMasterLevel } from '../data/quests'
+import { NPCQuests, getAvailableQuests, calculateMasterLevel } from '../../data/quests'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -53,12 +53,15 @@ const proceedToSchedule = () => {
     alert(t('intake.selectAtLeastOne'))
     return
   }
-  // TODO: 保存選中的 NPC 到 store
-  router.push('/schedule')
+  // 將選中的 NPC 保存到 sessionStorage
+  sessionStorage.setItem('selectedNPCs', JSON.stringify(selectedNPCs.value))
+  router.push('/time-management/schedule')
 }
 
 // 返回首頁
 const goHome = () => {
+  // 清除選中的 NPC 資料
+  sessionStorage.removeItem('selectedNPCs')
   router.push('/')
 }
 </script>

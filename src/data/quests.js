@@ -27,6 +27,8 @@ export const NPCQuests = [
       minMasterLevel: 0, // 第一局就可以選
       minCompletedQuests: 0
     },
+    // 所需天數
+    requiredDays: 5,
     // 獎勵
     rewards: {
       masterReputation: 10,
@@ -52,9 +54,10 @@ export const NPCQuests = [
       fitness: 40
     },
     requirements: {
-      minMasterLevel: 1,
-      minCompletedQuests: 1
+      minMasterLevel: 0,
+      minCompletedQuests: 0
     },
+    requiredDays: 7,
     rewards: {
       masterReputation: 15,
       coins: 150
@@ -82,6 +85,7 @@ export const NPCQuests = [
       minMasterLevel: 2,
       minCompletedQuests: 2
     },
+    requiredDays: 10,
     rewards: {
       masterReputation: 20,
       coins: 200
@@ -106,9 +110,10 @@ export const NPCQuests = [
       fitness: 50
     },
     requirements: {
-      minMasterLevel: 2,
-      minCompletedQuests: 2
+      minMasterLevel: 1,
+      minCompletedQuests: 1
     },
+    requiredDays: 10,
     rewards: {
       masterReputation: 25,
       coins: 250
@@ -136,6 +141,7 @@ export const NPCQuests = [
       minMasterLevel: 1,
       minCompletedQuests: 1
     },
+    requiredDays: 7,
     rewards: {
       masterReputation: 15,
       coins: 150
