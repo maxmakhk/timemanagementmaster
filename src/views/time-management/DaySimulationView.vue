@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { getActivityByName } from '../../data/time-management/activities'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -18,6 +19,7 @@ const selectedNPCId = ref(null) // Currently selected NPC tab
 // Header animation state
 const headerTimeLabel = ref('')
 const runTime = 100;
+const currentActivity = ref(null) // Track current activity for header images
 
 // Simulation state
 const isSimulationRunning = ref(false)
@@ -89,6 +91,25 @@ const headerTitle = computed(() => {
   const timeLabel = headerTimeLabel.value || ''
   const timePart = timeLabel ? `Day ${dayIndex} ${timeLabel}` : `Day ${dayIndex}`
   return `${t('day.title')} - ${timePart} / ${totalDays} 天 (${npcName})`
+})
+
+// Header background and character images
+const headerBackgroundImage = computed(() => {
+  if (!currentActivity.value || !currentActivity.value.bgImage) {
+    return '/images/time-management/bg_default.png'
+  }
+  return currentActivity.value.bgImage
+})
+
+const headerCharacterImage = computed(() => {
+  if (!selectedNPC.value) return null
+  const npcName = selectedNPC.value.name
+  
+  if (!currentActivity.value || !currentActivity.value.activityKey) {
+    return `/images/time-management/${npcName}_default.png`
+  }
+  
+  return `/images/time-management/${npcName}_${currentActivity.value.activityKey}.png`
 })
 
 // Get logs for the selected NPC
@@ -175,13 +196,10 @@ const processActivity = async (npc, item, npcLogs, abilities) => {
   npcLogs.push(`⏰ ${item.time} - ${item.activity}`)
   
   // 獲取活動的定義（用來查詢成本）
-  const activityDef = [
-    { id: 1, name: 'Coding Class', effect: { coding: 5 }, cost: { energy: 30, mood: 50 } },
-    { id: 2, name: 'Math Study', effect: { math: 5 }, cost: { energy: 30, mood: 50 } },
-    { id: 3, name: 'Fitness', effect: { fitness: 5 }, cost: { energy: 30, mood: 50 } },
-    { id: 4, name: 'Rest', isRest: true },
-    { id: 5, name: 'Lunch', cost: { energy: -50 } }
-  ].find(a => a.name === item.activity)
+  const activityDef = getActivityByName(item.activity)
+  
+  // Update current activity for header display
+  currentActivity.value = activityDef || null
   
   let gains = { coding: 0, math: 0, fitness: 0 }
   
@@ -545,13 +563,9 @@ const completeDay = () => {
       
       // Check if there are more NPCs
       if (simulationData.value.currentNPCIndex < simulationData.value.selectedNPCs.length) {
-        setTimeout(() => {
-          router.push('/time-management/schedule')
-        }, 3000) // Give user time to read results
+        router.push('/time-management/schedule')
       } else {
-        setTimeout(() => {
-          router.push('/time-management/report')
-        }, 3000)
+        router.push('/time-management/report')
       }
     } else if (examResults) {
       // Exam failed - extend days and return to schedule
@@ -568,9 +582,7 @@ const completeDay = () => {
       
       sessionStorage.setItem('simulationData', JSON.stringify(simulationData.value))
       
-      setTimeout(() => {
-        router.push('/time-management/schedule')
-      }, 3000) // Give user time to read results
+      router.push('/time-management/schedule')
     }
   } else {
     // Regular learning day - go to next day (which will be exam day)
@@ -593,20 +605,26 @@ const progressPercent = computed(() => {
 
 <template>
   <div class="day-simulation-view">
-    <header class="simulation-header">
-      <h1 v-if="selectedNPC || currentNPC">
-        {{ headerTitle }}
-      </h1>
-      <div v-if="isSimulationRunning" class="simulation-status">
-        <span class="status-indicator running">⏳</span>
-        <span>正在運行中...</span>
-      </div>
-      <div v-else-if="simulationComplete" class="simulation-status">
-        <span class="status-indicator complete">✅</span>
-        <span>模擬完成</span>
-      </div>
-      <div class="progress-bar">
-        <div class="progress" :style="{ width: progressPercent + '%' }"></div>
+    <header class="simulation-header" :style="{ backgroundImage: `url(${headerBackgroundImage})` }">
+      <div class="header-overlay"></div>
+      <div class="header-content">
+        <img v-if="headerCharacterImage" :src="headerCharacterImage" class="header-character" alt="Character">
+        <div class="header-info">
+          <h1 v-if="selectedNPC || currentNPC">
+            {{ headerTitle }}
+          </h1>
+          <div v-if="isSimulationRunning" class="simulation-status">
+            <span class="status-indicator running">⏳</span>
+            <span>正在運行中...</span>
+          </div>
+          <div v-else-if="simulationComplete" class="simulation-status">
+            <span class="status-indicator complete">✅</span>
+            <span>模擬完成</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress" :style="{ width: progressPercent + '%' }"></div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -643,25 +661,6 @@ const progressPercent = computed(() => {
 
       <!-- Combined Content -->
       <div class="combined-content">
-        <!-- Schedule Section -->
-        <div class="schedule-section">
-          <h2>📅 {{ selectedNPC?.name }} - {{ $t('day.todaySchedule') }}</h2>
-          <div v-if="selectedSchedule.length > 0" class="schedule-table">
-            <div v-for="(item, index) in selectedSchedule" :key="index" class="schedule-row">
-              <div class="time">{{ item.time }}</div>
-              <div class="activity">{{ item.activity }}</div>
-              <div class="effect">
-                <span v-for="(value, key) in item.effect" :key="key">
-                  {{ key }}: +{{ value }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="no-schedule">
-            ✗ 今天沒有安排行程
-          </div>
-        </div>
-
         <!-- Event Log Section -->
         <div class="log-section">
           <h2>📝 {{ $t('day.eventLog') }}</h2>
@@ -742,13 +741,52 @@ const progressPercent = computed(() => {
 
 .simulation-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-size: cover;
+  background-position: center;
   color: white;
   padding: 1.5rem;
-  text-align: center;
+  position: relative;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.header-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.85) 0%, rgba(118, 75, 162, 0.85) 100%);
+  z-index: 1;
+}
+
+.header-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  width: 100%;
+}
+
+.header-character {
+  width: 150px;
+  height: 200px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.header-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .simulation-header h1 {
-  margin: 0 0 1rem 0;
+  margin: 0;
+  font-size: 1.5rem;
 }
 
 .simulation-status {
@@ -885,64 +923,6 @@ const progressPercent = computed(() => {
   font-weight: 600;
   min-width: 60px;
   text-align: right;
-  font-size: 1.1rem;
-}
-
-/* 行程部分 */
-.schedule-section {
-  background: white;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.schedule-section h2 {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
-}
-
-.schedule-table {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.schedule-row {
-  display: grid;
-  grid-template-columns: 80px 1fr 1fr;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f9f9f9;
-  border-radius: 0.5rem;
-  border-left: 4px solid #667eea;
-}
-
-.time {
-  font-weight: 600;
-  color: #667eea;
-}
-
-.activity {
-  font-weight: 500;
-}
-
-.effect {
-  display: flex;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.effect span {
-  background: #e8f4f8;
-  padding: 0.2rem 0.5rem;
-  border-radius: 0.3rem;
-}
-
-.no-schedule {
-  text-align: center;
-  padding: 2rem;
-  color: #999;
   font-size: 1.1rem;
 }
 

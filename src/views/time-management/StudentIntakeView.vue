@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { NPCQuests, getAvailableQuests, calculateMasterLevel } from '../../data/quests'
+import { NPCQuests, getAvailableQuests, calculateMasterLevel } from '../../data/time-management/quests'
 
 const router = useRouter()
 const { t } = useI18n()

@@ -2,7 +2,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { NPCQuests } from '../../data/quests'
+import { NPCQuests } from '../../data/time-management/quests'
+import { activityCards } from '../../data/time-management/activities'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -51,13 +52,19 @@ const days = computed(() => {
 const timeSlots = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
 
 // 可用行程卡 - 包含學習效果和資源消耗
-const availableCards = [
-  { id: 1, name: t('schedule.codingClass'), effect: { coding: 5 }, cost: { energy: 30, mood: 50 }, color: '#3498db' },
-  { id: 2, name: t('schedule.mathStudy'), effect: { math: 5 }, cost: { energy: 30, mood: 50 }, color: '#e74c3c' },
-  { id: 3, name: t('schedule.fitnessTraining'), effect: { fitness: 5 }, cost: { energy: 30, mood: 50 }, color: '#2ecc71' },
-  { id: 4, name: t('schedule.rest'), effect: { energy: 100, mood: 100 }, isRest: true, color: '#f39c12' },
-  { id: 5, name: t('schedule.lunch'), effect: { energy: 50 }, color: '#95a5a6' },
-]
+const availableCards = computed(() => {
+  return activityCards.map(card => ({
+    ...card,
+    name: t(`schedule.${card.activityKey}`)
+  }))
+})
+
+// Current NPC's character image getter
+const getCurrentCharacterImage = (activityKey) => {
+  if (!currentNPC.value || !activityKey) return null
+  const npcName = currentNPC.value.name.toLowerCase()
+  return `/images/${npcName}_${activityKey}.png`
+}
 
 // 為每個 NPC 維護獨立的時間表和當前能力值
 const npcSchedules = reactive({})
