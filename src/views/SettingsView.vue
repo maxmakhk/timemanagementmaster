@@ -19,6 +19,41 @@ const saveSettings = () => {
   }, 2000)
 }
 
+// Clear all game data
+const clearAllData = () => {
+  if (confirm('Clear all game progress and data? This cannot be undone!')) {
+    sessionStorage.clear()
+    localStorage.clear()
+    saveMessage.value = 'All data cleared! Redirecting to home...'
+    setTimeout(() => {
+      router.push('/')
+      window.location.reload()
+    }, 1500)
+  }
+}
+
+// Export game data
+const exportData = () => {
+  const data = {
+    scheduleState: sessionStorage.getItem('scheduleState'),
+    simulationData: sessionStorage.getItem('simulationData'),
+    exportDate: new Date().toISOString()
+  }
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `time-management-save-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  
+  saveMessage.value = 'Game data exported!'
+  setTimeout(() => {
+    saveMessage.value = ''
+  }, 2000)
+}
+
 // 取消
 const cancel = () => {
   selectedLanguage.value = getLocale()
@@ -82,10 +117,63 @@ const goBack = () => {
         </div>
       </div>
 
-      <!-- 其他設置區域（為未來擴展預留） -->
+      <!-- Game Data Management -->
       <div class="settings-card">
-        <h2>{{ $t('common.settings') }}</h2>
-        <p class="placeholder">更多設置功能即將推出...</p>
+        <h2>🎮 Game Data Management</h2>
+        <p class="description">Manage your game progress and data</p>
+
+        <div class="data-actions">
+          <div class="action-item">
+            <div class="action-info">
+              <h3>Export Save Data</h3>
+              <p>Download your game progress as a backup file</p>
+            </div>
+            <button @click="exportData" class="btn btn-secondary">
+              📥 Export
+            </button>
+          </div>
+
+          <div class="action-item danger-zone">
+            <div class="action-info">
+              <h3>⚠️ Clear All Data</h3>
+              <p>Delete all game progress and start fresh</p>
+            </div>
+            <button @click="clearAllData" class="btn btn-danger">
+              🗑️ Clear Data
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Info -->
+      <div class="settings-card">
+        <h2>ℹ️ About</h2>
+        <div class="about-content">
+          <h3>Time Management Master</h3>
+          <p>A mini-game collection for managing student schedules and helping them achieve learning goals.</p>
+          
+          <div class="game-stats">
+            <div class="stat-item">
+              <span class="stat-label">Version:</span>
+              <span class="stat-value">1.0.0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Game Type:</span>
+              <span class="stat-value">Time Management / Simulation</span>
+            </div>
+          </div>
+
+          <div class="how-to-play">
+            <h4>How to Play:</h4>
+            <ol>
+              <li>Click "Add NPC Mission" to select a quest</li>
+              <li>Plan the timetable for each day</li>
+              <li>Run simulation to see progress</li>
+              <li>Pass the exam to complete the quest</li>
+              <li>Keep adding missions for continuous gameplay!</li>
+            </ol>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -124,7 +212,7 @@ const goBack = () => {
   grid-template-columns: 1fr;
   gap: 1.5rem;
   padding: 2rem;
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
   width: 100%;
 }
@@ -142,6 +230,18 @@ const goBack = () => {
   color: #667eea;
   border-bottom: 2px solid #f0f0f0;
   padding-bottom: 1rem;
+}
+
+.settings-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.settings-card h4 {
+  margin: 1.5rem 0 0.5rem 0;
+  font-size: 1rem;
+  color: #667eea;
 }
 
 .description {
@@ -198,6 +298,97 @@ const goBack = () => {
   flex: 1;
 }
 
+/* Data Management Styles */
+.data-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.action-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 0.8rem;
+  gap: 1rem;
+}
+
+.action-item.danger-zone {
+  border-color: #ffe0e0;
+  background: #fff5f5;
+}
+
+.action-info {
+  flex: 1;
+}
+
+.action-info h3 {
+  margin: 0 0 0.3rem 0;
+  font-size: 1rem;
+}
+
+.action-info p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* About Section */
+.about-content p {
+  color: #666;
+  line-height: 1.6;
+  margin: 0.5rem 0;
+}
+
+.game-stats {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f9f9ff;
+  border-radius: 0.5rem;
+  border-left: 4px solid #667eea;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e8e8f0;
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-weight: 600;
+  color: #555;
+}
+
+.stat-value {
+  color: #667eea;
+  font-weight: 500;
+}
+
+.how-to-play {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-radius: 0.5rem;
+}
+
+.how-to-play ol {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+}
+
+.how-to-play li {
+  margin: 0.5rem 0;
+  color: #666;
+  line-height: 1.5;
+}
+
 .save-message {
   background: #d4edda;
   color: #155724;
@@ -243,6 +434,7 @@ const goBack = () => {
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -264,6 +456,18 @@ const goBack = () => {
 .btn-secondary:hover {
   background: #e8e8e8;
   border-color: #ccc;
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
 }
 
 .btn-text {
@@ -299,6 +503,15 @@ const goBack = () => {
   }
 
   .btn {
+    width: 100%;
+  }
+
+  .action-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .action-item .btn {
     width: 100%;
   }
 }
