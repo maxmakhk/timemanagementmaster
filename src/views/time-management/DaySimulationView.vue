@@ -163,8 +163,15 @@ onMounted(() => {
   const data = sessionStorage.getItem('simulationData')
   if (data) {
     simulationData.value = JSON.parse(data)
-    // 從 simulationData 中載入當前天數
-    currentDay.value = simulationData.value.currentDay || 0
+    // Load current day from simulationData or initialize npcCurrentDays
+    if (!simulationData.value.npcCurrentDays) {
+      simulationData.value.npcCurrentDays = {}
+      simulationData.value.selectedNPCs.forEach(npc => {
+        simulationData.value.npcCurrentDays[npc.id] = 0
+      })
+    }
+    // Set currentDay to the first NPC's current day
+    currentDay.value = simulationData.value.npcCurrentDays[simulationData.value.selectedNPCs[0].id] || 0
     
     // Initialize logs structure for all NPCs
     if (simulationData.value.selectedNPCs) {
@@ -266,6 +273,9 @@ const simulateNPCDay = async (npc, npcIndex) => {
   currentSimulatingNPCIndex.value = npcIndex
   headerTimeLabel.value = '準備中'
   
+  // Get this NPC's current day
+  const npcCurrentDay = simulationData.value.npcCurrentDays?.[npc.id] ?? 0
+  
   // Initialize logs for NPC if not exists
   if (!logs.value[npc.id]) {
     logs.value[npc.id] = []
@@ -283,14 +293,14 @@ const simulateNPCDay = async (npc, npcIndex) => {
   const npcLogs = logs.value[npc.id]
   
   // 開始日誌
-  npcLogs.push(`📅 第 ${currentDay.value + 1} 天 - ${npc.name} 的日程`)
+  npcLogs.push(`📅 第 ${npcCurrentDay + 1} 天 - ${npc.name} 的日程`)
   npcLogs.push('---')
   
   await delay(500) // Initial delay
   
   // Get schedule for this NPC
   const schedule = simulationData.value.npcSchedules[npc.id]
-  const daySchedule = schedule?.[currentDay.value] || []
+  const daySchedule = schedule?.[npcCurrentDay] || []
   
   const scheduleItems = daySchedule
     .map((card, slotIndex) => {
@@ -308,7 +318,7 @@ const simulateNPCDay = async (npc, npcIndex) => {
   const npcRequiredDays = npc.requiredDays || 5
   const npcExtendedDays = simulationData.value?.extendedDays?.[npc.id]
   const npcMaxDays = npcExtendedDays || npcRequiredDays
-  const isNPCExamDay = currentDay.value === npcMaxDays
+  const isNPCExamDay = npcCurrentDay === npcMaxDays
   
   if (isNPCExamDay) {
     // This is exam day - show exam instead of regular schedule
@@ -393,6 +403,9 @@ const simulateNPCDay = async (npc, npcIndex) => {
     npcLogs.push('✅ 一天結束')
     headerTimeLabel.value = '完成'
   }
+  
+  // Update this NPC's current day
+  simulationData.value.npcCurrentDays[npc.id] = npcCurrentDay
   
   await delay(1500) // Delay before next NPC
 }
@@ -554,26 +567,47 @@ const completeDay = () => {
     const examResults = showExamResults()
     
     if (examResults && examResults.passed) {
-      // Exam passed - move to next NPC or report
-      simulationData.value.currentNPCIndex = (simulationData.value.currentNPCIndex || 0) + 1
-      simulationData.value.currentDay = 0
-      simulationData.value.examAttempt = 1 // Reset for new student
+      // Exam passed - mark this NPC as passed
+      if (!simulationData.value.npcCurrentDays) {
+        simulationData.value.npcCurrentDays = {}
+      }
+      if (!simulationData.value.npcPassStatus) {
+        simulationData.value.npcPassStatus = {}
+      }
+      simulationData.value.npcCurrentDays[currentNPC.value.id] = -1 // -1 means completed
+      simulationData.value.npcPassStatus[currentNPC.value.id] = true // Mark as passed
       
+      // Save to schedule state
+      const stateData = {
+        selectedNPCs: simulationData.value.selectedNPCs,
+        npcSchedules: simulationData.value.npcSchedules,
+        npcCurrentAbilities: simulationData.value.npcCurrentAbilities,
+        npcCurrentDays: simulationData.value.npcCurrentDays,
+        npcPassStatus: simulationData.value.npcPassStatus,
+        completedQuestIds: simulationData.value.completedQuestIds || [],
+        extendedDays: simulationData.value.extendedDays,
+      }
+      
+      // Add current NPC id to completed quests if not already there
+      if (!stateData.completedQuestIds.includes(currentNPC.value.id)) {
+        stateData.completedQuestIds.push(currentNPC.value.id)
+      }
+      
+      sessionStorage.setItem('scheduleState', JSON.stringify(stateData))
       sessionStorage.setItem('simulationData', JSON.stringify(simulationData.value))
       
-      // Check if there are more NPCs
-      if (simulationData.value.currentNPCIndex < simulationData.value.selectedNPCs.length) {
-        router.push('/time-management/schedule')
-      } else {
-        router.push('/time-management/report')
-      }
+      // Always return to schedule for continuous gameplay
+      router.push('/time-management/schedule')
     } else if (examResults) {
       // Exam failed - extend days and return to schedule
       const originalRequired = currentNPC.value.requiredDays
       const npcId = currentNPC.value.id
       
       // Continue from day after exam (e.g., if exam was day 6, continue from day 7)
-      simulationData.value.currentDay = originalRequired + 1
+      if (!simulationData.value.npcCurrentDays) {
+        simulationData.value.npcCurrentDays = {}
+      }
+      simulationData.value.npcCurrentDays[npcId] = originalRequired + 1
       simulationData.value.examAttempt = (simulationData.value.examAttempt || 1) + 1
       
       // Extend days by 5 more training days (e.g., 5 days + 1 exam day + 5 more days = 11 total, exam on day 12)
@@ -585,7 +619,15 @@ const completeDay = () => {
       router.push('/time-management/schedule')
     }
   } else {
-    // Regular learning day - go to next day (which will be exam day)
+    // Regular learning day - increment all NPCs' days and go to next day
+    if (!simulationData.value.npcCurrentDays) {
+      simulationData.value.npcCurrentDays = {}
+    }
+    simulationData.value.selectedNPCs.forEach(npc => {
+      if (simulationData.value.npcCurrentDays[npc.id] !== -1) { // Skip completed NPCs
+        simulationData.value.npcCurrentDays[npc.id] = (simulationData.value.npcCurrentDays[npc.id] || 0) + 1
+      }
+    })
     currentDay.value++
     simulationData.value.currentDay = currentDay.value
     

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { NPCQuests } from '../../data/time-management/quests'
@@ -9,17 +9,23 @@ const router = useRouter()
 const { t } = useI18n()
 
 // 示例：已選擇的 NPC（實際應從 store 傳入）
-// 第一局只有 Alice（難度 Easy）
-const selectedNPCs = ref([
-  NPCQuests[0], // Alice - 第一個 NPC - 默認值
-  // NPCQuests[1]  // Bob - 示例第二個（移除：第一局不可用）
-])
+// Start with empty list - users add NPCs via "Add Mission" button
+const selectedNPCs = ref([])
 
 // 當前正在編輯的 NPC
-const currentNPCId = ref(selectedNPCs.value[0].id)
+const currentNPCId = ref(selectedNPCs.value.length > 0 ? selectedNPCs.value[0].id : null)
 
 // 當前進行到第幾天（0-indexed，用於區分已過的天數）
 const currentDay = ref(0)
+
+// Store current day for each NPC separately
+const npcCurrentDays = reactive({})
+
+// Store pass status for each NPC (true = passed, false = not passed yet)
+const npcPassStatus = reactive({})
+
+// Track completed quest IDs for quest selection
+const completedQuestIds = ref([])
 
 // 儲存延伸後的天數（當考試失敗時）
 const extendedDays = reactive({})
@@ -70,19 +76,8 @@ const getCurrentCharacterImage = (activityKey) => {
 const npcSchedules = reactive({})
 const npcCurrentAbilities = reactive({})
 
-// 初始化每個 NPC 的時間表和當前能力值（+1 for exam day）
-selectedNPCs.value.forEach(npc => {
-  const npcDays = (npc.requiredDays || 5) + 1 // Each NPC's own days + exam day
-  npcSchedules[npc.id] = Array.from({ length: npcDays }, () => Array(6).fill(null))
-  // 初始化當前能力值為 initial 的值
-  npcCurrentAbilities[npc.id] = {
-    coding: npc.initial.coding,
-    math: npc.initial.math,
-    fitness: npc.initial.fitness,
-    mood: 50, // 初始心情值
-    energy: 50 // 初始精力值
-  }
-})
+// Initialize schedules and abilities when NPCs are added
+// (moved to addNPCMission function)
 
 // 計算當前 NPC 的時間表
 const currentSchedule = computed(() => {
@@ -103,11 +98,20 @@ const currentNPCDeadline = computed(() => {
   return extendedDays[currentNPC.value.id] || currentNPC.value.requiredDays || 5
 })
 
+// Current NPC's current day (how many days they've completed)
+const currentNPCDay = computed(() => {
+  if (!currentNPC.value) return 0
+  return npcCurrentDays[currentNPC.value.id] || 0
+})
+
 // 被拖動的卡片
 const draggedCard = ref(null)
 
 // 點擊選擇的卡片
 const selectedCard = ref(null)
+
+// Track shift key state
+const isShiftPressed = ref(false)
 
 // 拖動開始
 const startDrag = (card) => {
@@ -130,9 +134,16 @@ const selectNPC = (npc) => {
 }
 
 // 拖放到時間表格子
-const dropOnSlot = (dayIndex, slotIndex) => {
+const dropOnSlot = (dayIndex, slotIndex, applyToAllDays = false) => {
+  // Check if there's a current NPC selected
+  if (!currentNPC.value) {
+    alert('Please select or add an NPC mission first!')
+    draggedCard.value = null
+    return
+  }
+  
   // 檢查是否已經過了這一天，如果是則不允許編輯
-  if (dayIndex < currentDay.value) {
+  if (dayIndex < currentNPCDay.value) {
     alert('已過的天數無法編輯')
     draggedCard.value = null
     return
@@ -142,18 +153,41 @@ const dropOnSlot = (dayIndex, slotIndex) => {
   const cardToPlace = draggedCard.value || selectedCard.value
   
   if (cardToPlace) {
-    // 複製卡片到時間表
-    const cardCopy = { ...cardToPlace, instanceId: Date.now() }
-    currentSchedule.value[dayIndex][slotIndex] = cardCopy
+    if (applyToAllDays) {
+      // 應用到這個時間段的所有未來天數
+      const totalDays = currentSchedule.value.length
+      for (let i = dayIndex; i < totalDays; i++) {
+        const cardCopy = { ...cardToPlace, instanceId: Date.now() + i }
+        currentSchedule.value[i][slotIndex] = cardCopy
+      }
+    } else {
+      // 只應用到當前選中的格子
+      const cardCopy = { ...cardToPlace, instanceId: Date.now() }
+      currentSchedule.value[dayIndex][slotIndex] = cardCopy
+    }
     draggedCard.value = null
     // 保留選擇的卡片，不清除，以便繼續添加
   }
 }
 
 // 點擊時間表格子設置卡片
-const clickOnSlot = (dayIndex, slotIndex) => {
+const clickOnSlot = (dayIndex, slotIndex, event) => {
   if (selectedCard.value) {
-    dropOnSlot(dayIndex, slotIndex)
+    // 如果按住 Shift 鍵，則應用到所有未來天數
+    const applyToAllDays = event?.shiftKey || false
+    
+    // Prevent text selection when shift clicking
+    if (applyToAllDays) {
+      event.preventDefault()
+    }
+    
+    dropOnSlot(dayIndex, slotIndex, applyToAllDays)
+    
+    // 提示用戶
+    if (applyToAllDays) {
+      const totalApplied = currentSchedule.value.length - dayIndex
+      console.log(`已將 ${selectedCard.value.name} 應用到 ${totalApplied} 天的 ${timeSlots[slotIndex]} 時段`)
+    }
   }
 }
 
@@ -161,7 +195,7 @@ const clickOnSlot = (dayIndex, slotIndex) => {
 // 移除時間表中的卡片
 const removeCard = (dayIndex, slotIndex) => {
   // 檢查是否已經過了這一天，如果是則不允許編輯
-  if (dayIndex < currentDay.value) {
+  if (dayIndex < currentNPCDay.value) {
     alert('已過的天數無法編輯')
     return
   }
@@ -174,15 +208,95 @@ const allowDrop = (e) => {
   e.preventDefault()
 }
 
+// Keyboard event handlers for shift key
+const handleKeyDown = (e) => {
+  if (e.key === 'Shift') {
+    isShiftPressed.value = true
+  }
+}
+
+const handleKeyUp = (e) => {
+  if (e.key === 'Shift') {
+    isShiftPressed.value = false
+  }
+}
+
 // 在頁面掛載時，從 sessionStorage 載入模擬數據
 onMounted(() => {
-  // 首先檢查是否有選中的 NPC 資料（從 StudentIntakeView 傳來）
+  // Add keyboard event listeners
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+  
+  // First check if returning from intake with new NPC
+  const newNPCData = sessionStorage.getItem('newNPC')
+  if (newNPCData) {
+    const newNPC = JSON.parse(newNPCData)
+    sessionStorage.removeItem('newNPC')
+    
+    // Load previous state
+    const stateData = sessionStorage.getItem('scheduleState')
+    if (stateData) {
+      const state = JSON.parse(stateData)
+      selectedNPCs.value = state.selectedNPCs || []
+      Object.assign(npcSchedules, state.npcSchedules || {})
+      Object.assign(npcCurrentAbilities, state.npcCurrentAbilities || {})
+      Object.assign(npcCurrentDays, state.npcCurrentDays || {})
+      Object.assign(npcPassStatus, state.npcPassStatus || {})
+      completedQuestIds.value = state.completedQuestIds || []
+      if (state.extendedDays) {
+        Object.assign(extendedDays, state.extendedDays)
+      }
+    }
+    
+    // Add new NPC
+    selectedNPCs.value.push(newNPC)
+    
+    // Initialize new NPC's schedule and abilities
+    const npcDays = (newNPC.requiredDays || 5) + 1
+    npcSchedules[newNPC.id] = Array.from({ length: npcDays }, () => Array(6).fill(null))
+    npcCurrentAbilities[newNPC.id] = {
+      coding: newNPC.initial.coding,
+      math: newNPC.initial.math,
+      fitness: newNPC.initial.fitness,
+      mood: 50,
+      energy: 50
+    }
+    npcCurrentDays[newNPC.id] = 0
+    npcPassStatus[newNPC.id] = false
+    
+    // Select the new NPC
+    currentNPCId.value = newNPC.id
+    return
+  }
+  
+  // Load schedule state if exists (returning from simulation)
+  const stateData = sessionStorage.getItem('scheduleState')
+  if (stateData) {
+    const state = JSON.parse(stateData)
+    selectedNPCs.value = state.selectedNPCs || []
+    Object.assign(npcSchedules, state.npcSchedules || {})
+    Object.assign(npcCurrentAbilities, state.npcCurrentAbilities || {})
+    Object.assign(npcCurrentDays, state.npcCurrentDays || {})
+    Object.assign(npcPassStatus, state.npcPassStatus || {})
+    completedQuestIds.value = state.completedQuestIds || []
+    if (state.extendedDays) {
+      Object.assign(extendedDays, state.extendedDays)
+    }
+    if (selectedNPCs.value.length > 0 && !currentNPCId.value) {
+      currentNPCId.value = selectedNPCs.value[0].id
+    }
+    return
+  }
+
+  // Legacy: Check for old selectedNPCs format (for backward compatibility)
   const npcsData = sessionStorage.getItem('selectedNPCs')
   if (npcsData) {
     selectedNPCs.value = JSON.parse(npcsData)
-    currentNPCId.value = selectedNPCs.value[0].id
+    if (selectedNPCs.value.length > 0) {
+      currentNPCId.value = selectedNPCs.value[0].id
+    }
     
-    // 重新初始化時間表和能力值
+    // Initialize schedules and abilities
     const maxRequiredDays_value = Math.max(...selectedNPCs.value.map(npc => npc.requiredDays || 5))
     selectedNPCs.value.forEach(npc => {
       npcSchedules[npc.id] = Array.from({ length: maxRequiredDays_value }, () => Array(6).fill(null))
@@ -193,28 +307,35 @@ onMounted(() => {
         mood: 50,
         energy: 50
       }
+      npcCurrentDays[npc.id] = 0
+      npcPassStatus[npc.id] = false
     })
+    return
   }
 
-  // 然後檢查是否有進行中的遊戲數據（從 DaySimulationView 返回）
+  // Check for simulation data (returning from DaySimulationView)
   const data = sessionStorage.getItem('simulationData')
   if (data) {
     const simulationData = JSON.parse(data)
-    // 恢復 currentDay、npcSchedules 和 npcCurrentAbilities
     currentDay.value = simulationData.currentDay || 0
     Object.assign(npcSchedules, simulationData.npcSchedules)
     Object.assign(npcCurrentAbilities, simulationData.npcCurrentAbilities)
     
-    // 如果有延伸的天數，也要載入
+    if (simulationData.npcCurrentDays) {
+      Object.assign(npcCurrentDays, simulationData.npcCurrentDays)
+    }
+    
+    if (simulationData.npcPassStatus) {
+      Object.assign(npcPassStatus, simulationData.npcPassStatus)
+    }
+    
     if (simulationData.extendedDays) {
       Object.assign(extendedDays, simulationData.extendedDays)
       
-      // 擴展 npcSchedules 以容納新的天數（包括新的考試日）
       selectedNPCs.value.forEach(npc => {
         const extendedDaysCount = simulationData.extendedDays[npc.id]
         if (extendedDaysCount && npcSchedules[npc.id]) {
-          // 如果現有的天數少於擴展後的天數+考試日，則添加新的空日期
-          const requiredLength = extendedDaysCount + 1 // +1 for new exam day
+          const requiredLength = extendedDaysCount + 1
           const currentLength = npcSchedules[npc.id].length
           if (currentLength < requiredLength) {
             for (let i = currentLength; i < requiredLength; i++) {
@@ -227,6 +348,12 @@ onMounted(() => {
   }
 })
 
+// Cleanup keyboard event listeners
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
+})
+
 // 開始模擬
 const startSimulation = () => {
   // 驗證至少有一個 NPC 被選擇
@@ -234,6 +361,18 @@ const startSimulation = () => {
     alert('請先選擇至少一個 NPC')
     return
   }
+
+  // Save schedule state
+  const stateData = {
+    selectedNPCs: selectedNPCs.value,
+    npcSchedules,
+    npcCurrentAbilities,
+    npcCurrentDays,
+    npcPassStatus,
+    completedQuestIds: completedQuestIds.value,
+    extendedDays: Object.keys(extendedDays).length > 0 ? extendedDays : undefined,
+  }
+  sessionStorage.setItem('scheduleState', JSON.stringify(stateData))
 
   // 將數據保存到 sessionStorage 以便 DaySimulationView 使用
   const simulationData = {
@@ -247,6 +386,8 @@ const startSimulation = () => {
     })),
     npcSchedules: npcSchedules,
     npcCurrentAbilities: npcCurrentAbilities,
+    npcCurrentDays: npcCurrentDays,
+    npcPassStatus: npcPassStatus,
     currentDay: currentDay.value,
     extendedDays: Object.keys(extendedDays).length > 0 ? extendedDays : undefined,
   }
@@ -257,7 +398,49 @@ const startSimulation = () => {
 
 // 返回
 const goBack = () => {
+  router.push('/')
+}
+
+// Add new NPC mission
+const addNPCMission = () => {
+  // Save current state before going to intake
+  const stateData = {
+    selectedNPCs: selectedNPCs.value,
+    npcSchedules,
+    npcCurrentAbilities,
+    npcCurrentDays,
+    npcPassStatus,
+    completedQuestIds: completedQuestIds.value,
+    extendedDays: Object.keys(extendedDays).length > 0 ? extendedDays : undefined,
+  }
+  sessionStorage.setItem('scheduleState', JSON.stringify(stateData))
   router.push('/time-management/intake')
+}
+
+// Start new game (clear all data)
+const startNewGame = () => {
+  if (selectedNPCs.value.length > 0) {
+    if (!confirm('Start a new game? This will clear all current missions and progress.')) {
+      return
+    }
+  }
+  
+  // Clear all session storage
+  sessionStorage.removeItem('scheduleState')
+  sessionStorage.removeItem('simulationData')
+  sessionStorage.removeItem('selectedNPCs')
+  sessionStorage.removeItem('newNPC')
+  
+  // Reset all reactive data
+  selectedNPCs.value = []
+  currentNPCId.value = null
+  currentDay.value = 0
+  completedQuestIds.value = []
+  Object.keys(npcSchedules).forEach(key => delete npcSchedules[key])
+  Object.keys(npcCurrentAbilities).forEach(key => delete npcCurrentAbilities[key])
+  Object.keys(npcCurrentDays).forEach(key => delete npcCurrentDays[key])
+  Object.keys(npcPassStatus).forEach(key => delete npcPassStatus[key])
+  Object.keys(extendedDays).forEach(key => delete extendedDays[key])
 }
 </script>
 
@@ -289,15 +472,28 @@ const goBack = () => {
       <div class="left-panels">
         <!-- NPC 任務卡顯示 -->
         <div class="npc-panel">
-          <h2>📋 {{ $t('schedule.npcMissions') }}</h2>
-          <div class="npc-cards-list">
+          <div class="panel-header">
+            <h2>📋 {{ $t('schedule.npcMissions') }}</h2>
+            <button @click="addNPCMission" class="btn-add-mission">
+              ➕ Add NPC Mission
+            </button>
+          </div>
+          <div v-if="selectedNPCs.length === 0" class="empty-state">
+            <p>No missions yet!</p>
+            <p>Click "Add NPC Mission" to start</p>
+          </div>
+          <div v-else class="npc-cards-list">
             <div
               v-for="npc in selectedNPCs"
               :key="npc.id"
               class="npc-mission-card"
-              :class="{ active: currentNPCId === npc.id }"
-              @click="selectNPC(npc)"
+              :class="{ 
+                active: currentNPCId === npc.id,
+                passed: npcPassStatus[npc.id]
+              }"
+              @click="!npcPassStatus[npc.id] && selectNPC(npc)"
             >
+              <div v-if="npcPassStatus[npc.id]" class="pass-badge">✅ PASSED</div>
               <div class="npc-header">
                 <span class="npc-image">{{ npc.image }}</span>
                 <div class="npc-title">
@@ -351,7 +547,7 @@ const goBack = () => {
         <!-- 可用行程卡 -->
         <div class="cards-panel">
           <h2>{{ $t('schedule.availableActivities') }}</h2>
-          <p class="cards-hint">{{ selectedCard ? '' + selectedCard.name + ' | 點擊時間表添加' : '點擊選擇 或 拖拽添加' }}</p>
+          <p class="cards-hint">{{ selectedCard ? selectedCard.name + ' | 點擊添加 | Shift+點擊 應用到所有天數' : '點擊選擇 或 拖拽添加' }}</p>
           <div class="cards-list">
             <div
               v-for="card in availableCards"
@@ -391,13 +587,13 @@ const goBack = () => {
           <div class="timetable-header">
             <div class="time-col"></div>
             <div v-for="(day, dayIndex) in days" :key="day" class="day-col" :class="{ 
-              'past-day-header': dayIndex < currentDay,
-              'today-header': dayIndex === currentDay,
-              'future-day-header': dayIndex > currentDay
+              'past-day-header': dayIndex < currentNPCDay,
+              'today-header': dayIndex === currentNPCDay,
+              'future-day-header': dayIndex > currentNPCDay
             }">
               {{ day }}
-              <span v-if="dayIndex < currentDay" class="day-status">✓ 已過</span>
-              <span v-else-if="dayIndex === currentDay" class="day-status">📍 今天</span>
+              <span v-if="dayIndex < currentNPCDay" class="day-status">✓ 已過</span>
+              <span v-else-if="dayIndex === currentNPCDay" class="day-status">📍 今天</span>
             </div>
           </div>
 
@@ -409,26 +605,26 @@ const goBack = () => {
               :key="`${dayIndex}-${slotIndex}`"
               class="schedule-cell"
               :class="{ 
-                'past-day': dayIndex < currentDay,
-                'today': dayIndex === currentDay,
-                'future-day': dayIndex > currentDay,
-                'selected-slot': selectedCard && dayIndex >= currentDay
+                'past-day': dayIndex < currentNPCDay,
+                'today': dayIndex === currentNPCDay,
+                'future-day': dayIndex > currentNPCDay,
+                'selected-slot': selectedCard && dayIndex >= currentNPCDay && !isShiftPressed
               }"
               @drop="dropOnSlot(dayIndex, slotIndex)"
               @dragover.prevent="(e) => allowDrop(e)"
-              @click="clickOnSlot(dayIndex, slotIndex)"
+              @click="(e) => clickOnSlot(dayIndex, slotIndex, e)"
             >
               <div
                 v-if="currentSchedule[dayIndex] && currentSchedule[dayIndex][slotIndex]"
                 class="scheduled-card"
                 :style="{ backgroundColor: currentSchedule[dayIndex][slotIndex].color }"
-                @click="dayIndex >= currentDay && removeCard(dayIndex, slotIndex)"
-                :class="{ 'locked': dayIndex < currentDay }"
-                :title="dayIndex < currentDay ? '已過的天數無法編輯' : '點擊移除'"
+                @click="dayIndex >= currentNPCDay && removeCard(dayIndex, slotIndex)"
+                :class="{ 'locked': dayIndex < currentNPCDay }"
+                :title="dayIndex < currentNPCDay ? '已過的天數無法編輯' : '點擊移除'"
               >
                 {{ currentSchedule[dayIndex][slotIndex].name }}
               </div>
-              <div v-else class="empty-slot" :class="{ 'locked': dayIndex < currentDay }">＋</div>
+              <div v-else class="empty-slot" :class="{ 'locked': dayIndex < currentNPCDay }">＋</div>
             </div>
           </div>
         </div>
@@ -438,9 +634,12 @@ const goBack = () => {
     <!-- 底部操作按鈕 -->
     <div class="action-buttons">
       <button @click="goBack" class="btn btn-secondary">
-        {{ $t('schedule.goBack') }}
+        🏠 Home
       </button>
-      <button @click="startSimulation" class="btn btn-primary">
+      <button @click="startNewGame" class="btn btn-danger">
+        🔄 New Game
+      </button>
+      <button v-if="selectedNPCs.length > 0 && selectedNPCs.some(npc => !npcPassStatus[npc.id])" @click="startSimulation" class="btn btn-primary">
         {{ $t('schedule.startSimulation') }}
       </button>
     </div>
@@ -586,10 +785,47 @@ const goBack = () => {
   flex-direction: column;
 }
 
+.npc-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
 .npc-panel h2 {
-  margin: 0 0 0.8rem 0;
+  margin: 0;
   font-size: 0.95rem;
   color: #667eea;
+}
+
+.btn-add-mission {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-add-mission:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  color: #999;
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 .npc-cards-list {
@@ -608,6 +844,7 @@ const goBack = () => {
   transition: all 0.3s ease;
   cursor: pointer;
   min-height: 0;
+  position: relative;
 }
 
 .npc-mission-card:hover {
@@ -619,6 +856,31 @@ const goBack = () => {
   border-color: #667eea;
   background: linear-gradient(135deg, #e8e8ff 0%, #f0f0ff 100%);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.npc-mission-card.passed {
+  opacity: 0.7;
+  background: #e8f5e9;
+  border-color: #4caf50;
+  cursor: not-allowed;
+}
+
+.npc-mission-card.passed:hover {
+  border-color: #4caf50;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+}
+
+.pass-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #4caf50;
+  color: white;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .npc-header {
@@ -888,6 +1150,10 @@ const goBack = () => {
   border-radius: 0.3rem;
   overflow-x: auto;
   width: 100%;
+  user-select: none; /* Prevent text selection when shift-clicking */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .timetable-header {
@@ -1090,5 +1356,16 @@ const goBack = () => {
 .btn-secondary:hover {
   background: #e0e0e0;
   transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
 }
 </style>

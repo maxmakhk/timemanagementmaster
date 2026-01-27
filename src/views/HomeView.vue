@@ -14,7 +14,7 @@ const games = ref([
     description: '時間管理遊戲 - 指導學生達成學習目標',
     icon: '📚',
     color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    route: '/time-management/intake',
+    route: '/time-management/schedule',
     enabled: true
   },
   {
@@ -48,9 +48,11 @@ const games = ref([
 
 const startGame = (game) => {
   if (game.enabled && game.route) {
-    // Clear any previous game data
+    // Clear any previous game data for new game
     sessionStorage.removeItem('simulationData')
     sessionStorage.removeItem('selectedNPCs')
+    sessionStorage.removeItem('scheduleState')
+    sessionStorage.removeItem('newNPC')
     router.push(game.route)
   }
 }

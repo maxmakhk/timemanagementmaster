@@ -10,14 +10,18 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/time-management/intake',
-      name: 'time-management-intake',
-      component: () => import('../views/time-management/StudentIntakeView.vue')
+      path: '/time-management',
+      redirect: '/time-management/schedule'
     },
     {
       path: '/time-management/schedule',
       name: 'time-management-schedule',
       component: () => import('../views/time-management/ScheduleView.vue')
+    },
+    {
+      path: '/time-management/intake',
+      name: 'time-management-intake',
+      component: () => import('../views/time-management/StudentIntakeView.vue')
     },
     {
       path: '/time-management/simulation',

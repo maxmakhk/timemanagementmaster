@@ -8,9 +8,20 @@ const router = useRouter()
 const { t } = useI18n()
 
 // 遊戲進度（可從 store 或 localStorage 獲取）
-const completedQuests = ref([
-  1 // 示例：已完成第一個任務
-])
+const completedQuests = ref([])
+
+// Load completed quests from session storage
+const loadCompletedQuests = () => {
+  const stateData = sessionStorage.getItem('scheduleState')
+  if (stateData) {
+    const state = JSON.parse(stateData)
+    if (state.completedQuestIds) {
+      completedQuests.value = state.completedQuestIds
+    }
+  }
+}
+
+loadCompletedQuests()
 
 // 計算可選的最大 NPC 數量
 const maxSelectableNPCs = computed(() => {
@@ -24,21 +35,17 @@ const availableQuests = computed(() => {
   return getAvailableQuests(masterLevel, completedQuests.value.length)
 })
 
-// 已選擇的 NPC
+// 已選擇的 NPC (only allow single selection in add mode)
 const selectedNPCs = ref([])
 
-// 選擇/取消 NPC
+// 選擇/取消 NPC (single selection mode)
 const toggleNPC = (quest) => {
   const index = selectedNPCs.value.findIndex(q => q.id === quest.id)
   if (index > -1) {
     selectedNPCs.value.splice(index, 1)
   } else {
-    // 如果已達到最大可選數量，提示
-    if (selectedNPCs.value.length >= maxSelectableNPCs.value) {
-      alert(`${t('intake.canSelectMax')} ${maxSelectableNPCs.value} ${t('intake.npcCards')}`)
-      return
-    }
-    selectedNPCs.value.push(quest)
+    // Single selection mode - replace previous selection
+    selectedNPCs.value = [quest]
   }
 }
 
@@ -47,30 +54,41 @@ const isSelected = (quest) => {
   return selectedNPCs.value.some(q => q.id === quest.id)
 }
 
-// 開始規劃時間表
+// 開始規劃時間表 (Add NPC mode - save single NPC and return)
 const proceedToSchedule = () => {
   if (selectedNPCs.value.length === 0) {
     alert(t('intake.selectAtLeastOne'))
     return
   }
-  // 將選中的 NPC 保存到 sessionStorage
-  sessionStorage.setItem('selectedNPCs', JSON.stringify(selectedNPCs.value))
+  
+  // Check if this NPC already exists
+  const stateData = sessionStorage.getItem('scheduleState')
+  if (stateData) {
+    const state = JSON.parse(stateData)
+    const existingNPCs = state.selectedNPCs || []
+    if (existingNPCs.some(npc => npc.id === selectedNPCs.value[0].id)) {
+      alert('This quest is already in your missions!')
+      return
+    }
+  }
+  
+  // Save the newly selected NPC
+  sessionStorage.setItem('newNPC', JSON.stringify(selectedNPCs.value[0]))
   router.push('/time-management/schedule')
 }
 
 // 返回首頁
 const goHome = () => {
-  // 清除選中的 NPC 資料
-  sessionStorage.removeItem('selectedNPCs')
-  router.push('/')
+  // Return to schedule without adding NPC
+  router.push('/time-management/schedule')
 }
 </script>
 
 <template>
   <div class="intake-view">
     <header class="intake-header">
-      <h1>{{ $t('intake.questSelection') }}</h1>
-      <p>{{ $t('intake.selectNPCCards', { max: maxSelectableNPCs }) }}</p>
+      <h1>➕ Add New NPC Mission</h1>
+      <p>Select one NPC to add to your timetable</p>
       <div class="progress-info">
         <span>{{ $t('intake.masterLevel') }}: {{ calculateMasterLevel(completedQuests.length) }}</span>
         <span>{{ $t('intake.completedQuests') }}: {{ completedQuests.length }}</span>
@@ -147,10 +165,10 @@ const goHome = () => {
     <!-- 底部按鈕 -->
     <div class="action-buttons">
       <button @click="goHome" class="btn btn-secondary">
-        {{ $t('intake.goHome') }}
+        ← Cancel
       </button>
-      <button @click="proceedToSchedule" class="btn btn-primary">
-        {{ $t('intake.proceedToSchedule') }}
+      <button @click="proceedToSchedule" class="btn btn-primary" :disabled="selectedNPCs.length === 0">
+        ✓ Add to Timetable
       </button>
     </div>
   </div>
