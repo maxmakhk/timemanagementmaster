@@ -109,11 +109,11 @@ const goHome = () => {
           >
             <div class="quest-image">{{ quest.image }}</div>
             <div class="quest-name">{{ quest.name }}</div>
-            <div class="quest-character">{{ quest.character }}</div>
+            <div class="quest-character">{{ $t(quest.characterKey) }}</div>
             <div class="quest-difficulty" :class="'difficulty-' + quest.difficulty.toLowerCase()">
               {{ quest.difficulty }}
             </div>
-            <div class="quest-description">{{ quest.description }}</div>
+            <div class="quest-description">{{ $t(quest.descriptionKey) }}</div>
             <div class="quest-goals">
               <div class="goal-item">
                 <span class="goal-label">{{ $t('intake.coding') }}</span>
@@ -138,7 +138,7 @@ const goHome = () => {
         </div>
       </div>
 
-      <!-- 右側：已選擇的 NPC -->
+      <!-- 已選擇的 NPC -->
       <div class="selected-panel">
         <h2>{{ $t('intake.selectedNPCs') }} ({{ selectedNPCs.length }}/{{ maxSelectableNPCs }})</h2>
         <div v-if="selectedNPCs.length === 0" class="no-selection">
@@ -207,12 +207,12 @@ const goHome = () => {
 }
 
 .intake-container {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: 1.5rem;
   padding: 1.5rem;
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
 }
 
 /* NPC 任務卡面板 */
@@ -221,7 +221,8 @@ const goHome = () => {
   border-radius: 0.8rem;
   padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .quests-panel h2 {
@@ -230,9 +231,32 @@ const goHome = () => {
 }
 
 .quests-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: flex;
+  flex-direction: row;
   gap: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.quests-grid::-webkit-scrollbar {
+  height: 6px;
+}
+
+.quests-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.quests-grid::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 3px;
+}
+
+.quests-grid::-webkit-scrollbar-thumb:hover {
+  background: #5568d3;
 }
 
 .quest-card {
@@ -243,6 +267,10 @@ const goHome = () => {
   transition: all 0.3s ease;
   background: white;
   position: relative;
+  min-width: 240px;
+  flex-shrink: 0;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .quest-card:hover {
@@ -271,6 +299,25 @@ const goHome = () => {
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  z-index: 10;
+}
+
+.quest-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.quest-card::-webkit-scrollbar-track {
+  background: #f9f9f9;
+  border-radius: 3px;
+}
+
+.quest-card::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+.quest-card::-webkit-scrollbar-thumb:hover {
+  background: #999;
 }
 
 .quest-image {
@@ -374,6 +421,7 @@ const goHome = () => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .selected-panel h2 {
@@ -533,7 +581,7 @@ const goHome = () => {
 .intake-container {
   display: flex;
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
   gap: 1rem;
   padding: 1rem;
 }

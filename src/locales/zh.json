@@ -15,7 +15,17 @@
     "startNewSemester": "開始新學期",
     "loadProgress": "載入進度",
     "tutorial": "教學",
-    "settings": "設置"
+    "settings": "設置",
+    "gameCollectionTitle": "迷你遊戲合集",
+    "gameCollectionSubtitle": "選擇一個遊戲開始遊玩",
+    "timeManagementGame": "時間管理大師",
+    "timeManagementDesc": "時間管理遊戲 - 指導學生達成學習目標",
+    "comingSoon": "即將推出",
+    "comingSoonDesc": "更多迷你遊戲即將推出...",
+    "comingSoonLabel": "即將推出",
+    "startNewGame": "🎯 開始新遊戲",
+    "loadGame": "📂 載入進度",
+    "noSavedProgress": "沒有找到已保存的進度"
   },
   "intake": {
     "title": "招生與目標設定",
@@ -61,17 +71,75 @@
     "coding": "編程",
     "math": "數學",
     "fitness": "健身",
-    "reputation": "名聲"
+    "reputation": "名聲",
+    "selectNPCFirst": "請先選擇或添加 NPC 任務！",
+    "pastDaysNoEdit": "已過的天數無法編輯",
+    "appliedToMultipleDays": "已將 {card} 應用到 {count} 天的 {timeSlot} 時段",
+    "selectAtLeastOneNPC": "請先選擇至少一個 NPC",
+    "clickToAdd": "點擊添加",
+    "shiftClickApplyAll": "Shift+點擊 應用到所有天數",
+    "clickSelectOrDrag": "點擊選擇 或 拖曳添加",
+    "dayPassed": "✓ 已過",
+    "dayToday": "📍 今天",
+    "deadline": "截止",
+    "progress": "進度",
+    "day": "天"
   },
   "day": {
     "title": "每日模擬",
     "day": "第",
-    "of": "天 /",
+    "of": "天",
     "todaySchedule": "今日行程",
-    "eventLog": "事件日誌",    "currentAbilities": "當前能力值",    "nextDay": "下一天",
-    "completeDay": "完成此天",
-    "viewReport": "查看成績報告",
-    "goBack": "返回規劃"
+    "eventLog": "事件記錄",
+    "currentAbilities": "當前能力",
+    "nextDay": "下一天",
+    "completeDay": "完成當天",
+    "viewReport": "查看報告",
+    "goBack": "返回規劃",
+    "preparing": "準備中",
+    "daySchedule": "第 {day} 天 - {name} 的日程",
+    "examDay": "📝 今天是考試日！",
+    "examInProgress": "考試中",
+    "examResults": "🎓 === 考試結果 === 🎓",
+    "examAttempt": "📋 考試嘗試次數: #{attempt}",
+    "skillAssessment": "📊 技能評估：",
+    "passed": "✅ 通過",
+    "failed": "❌ 未通過",
+    "overallPassRate": "📈 總體通過率: {passed}/3 技能",
+    "energyRestored": "✓ 精力恢復至 100",
+    "moodRestored": "✓ 心情恢復至 100",
+    "energyGained": "✓ 精力 +{amount}",
+    "energyConsumed": "📉 精力消耗 {amount} ({old} → {new})",
+    "moodConsumed": "📉 心情消耗 {amount} ({old} → {new})",
+    "lowEfficiency": "⚠️ 能量或心情不足，學習效果降低 50%",
+    "codingGained": "✓ 編程能力 +{amount}",
+    "mathGained": "✓ 數學能力 +{amount}",
+    "fitnessGained": "✓ 身體素質 +{amount}",
+    "cannotLoadData": "無法載入模擬數據",
+    "examPassed": "🎉 === 考試通過！ === 🎉",
+    "reputationGained": "🏆 獲得聲望: {amount}",
+    "questCompleted": "✨ 恭喜完成任務！",
+    "examFailed": "😔 === 考試未通過 === 😔",
+    "skillsBelowTarget": "⚠️ {count} 個技能未達標",
+    "needMoreTime": "💡 建議：需要更多學習時間",
+    "rewardReduced": "📉 聲望獎勵已降低: {original} → {final} (-{percent}%)",
+    "examComplete": "考試完成",
+    "noSchedule": "✗ 今天沒有安排行程",
+    "noScheduleStatus": "無行程",
+    "dailySummary": "📊 今日總進度：",
+    "coding": "編程",
+    "math": "數學",
+    "body": "身體",
+    "energy": "精力",
+    "mood": "心情",
+    "dayComplete": "✅ 一天結束",
+    "complete": "完成",
+    "cannotCalculateExam": "❌ 無法計算考試結果",
+    "simulationRunning": "正在運行中...",
+    "simulationComplete": "模擬完成",
+    "simulatingAllStudents": "正在模擬每位學生的一天...",
+    "currentAbilities": "當前能力值",
+    "days": "天"
   },
   "exam": {
     "title": "考試結果",
@@ -126,6 +194,31 @@
     "selectLanguage": "選擇你偏好的語言",
     "save": "保存",
     "cancel": "取消",
-    "languageChanged": "語言已成功更改"
-  }
+    "languageChanged": "語言已成功更改"  },
+  "quests": {
+    "alice1": {
+      "character": "勤奮的學生",
+      "description": "幫助 Alice 提升基礎技能",
+      "personality": "勤奮"
+    },
+    "bob1": {
+      "character": "活潑的學生",
+      "description": "協助 Bob 達到均衡發展",
+      "personality": "活潑"
+    },
+    "alice2": {
+      "character": "聪慧的學生",
+      "description": "指導 Alice 成為學術高手",
+      "personality": "聪慧"
+    },
+    "alice3": {
+      "character": "均衡的學生",
+      "description": "培養 Alice 成為全能人才",
+      "personality": "均衡"
+    },
+    "bob2": {
+      "character": "體育天才",
+      "description": "幫助 Bob 全面發展",
+      "personality": "活躍"
+    }  }
 }

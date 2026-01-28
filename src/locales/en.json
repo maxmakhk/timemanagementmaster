@@ -15,7 +15,17 @@
     "startNewSemester": "Start New Semester",
     "loadProgress": "Load Progress",
     "tutorial": "Tutorial",
-    "settings": "Settings"
+    "settings": "Settings",
+    "gameCollectionTitle": "Mini Game Collection",
+    "gameCollectionSubtitle": "Select a game to start playing",
+    "timeManagementGame": "Time Management Master",
+    "timeManagementDesc": "Time management game - Guide students to achieve learning goals",
+    "comingSoon": "Coming Soon",
+    "comingSoonDesc": "More mini games coming soon...",
+    "comingSoonLabel": "Coming Soon",
+    "startNewGame": "🎯 Start New Game",
+    "loadGame": "📂 Load Progress",
+    "noSavedProgress": "No saved progress found"
   },
   "intake": {
     "title": "Student Recruitment & Goal Setting",
@@ -61,7 +71,19 @@
     "coding": "Coding",
     "math": "Math",
     "fitness": "Fitness",
-    "reputation": "Reputation"
+    "reputation": "Reputation",
+    "selectNPCFirst": "Please select or add an NPC mission first!",
+    "pastDaysNoEdit": "Past days cannot be edited",
+    "appliedToMultipleDays": "Applied {card} to {count} days at {timeSlot}",
+    "selectAtLeastOneNPC": "Please select at least one NPC first",
+    "clickToAdd": "Click to add",
+    "shiftClickApplyAll": "Shift+Click to apply to all days",
+    "clickSelectOrDrag": "Click to select or drag to add",
+    "dayPassed": "✓ Passed",
+    "dayToday": "📍 Today",
+    "deadline": "Deadline",
+    "progress": "Progress",
+    "day": "Day"
   },
   "day": {
     "title": "Daily Simulation",
@@ -73,7 +95,51 @@
     "nextDay": "Next Day",
     "completeDay": "Complete Day",
     "viewReport": "View Report",
-    "goBack": "Back to Plan"
+    "goBack": "Back to Plan",
+    "preparing": "Preparing",
+    "daySchedule": "Day {day} - {name}'s Schedule",
+    "examDay": "📝 Today is Exam Day!",
+    "examInProgress": "Exam in Progress",
+    "examResults": "🎓 === Exam Results === 🎓",
+    "examAttempt": "📋 Exam Attempt: #{attempt}",
+    "skillAssessment": "📊 Skill Assessment:",
+    "passed": "✅ Passed",
+    "failed": "❌ Failed",
+    "overallPassRate": "📈 Overall Pass Rate: {passed}/3 skills",
+    "energyRestored": "✓ Energy restored to 100",
+    "moodRestored": "✓ Mood restored to 100",
+    "energyGained": "✓ Energy +{amount}",
+    "energyConsumed": "📉 Energy consumed {amount} ({old} → {new})",
+    "moodConsumed": "📉 Mood consumed {amount} ({old} → {new})",
+    "lowEfficiency": "⚠️ Energy or mood insufficient, learning effectiveness reduced by 50%",
+    "codingGained": "✓ Coding ability +{amount}",
+    "mathGained": "✓ Math ability +{amount}",
+    "fitnessGained": "✓ Fitness +{amount}",
+    "cannotLoadData": "Cannot load simulation data",
+    "examPassed": "🎉 === Exam Passed! === 🎉",
+    "reputationGained": "🏆 Reputation gained: {amount}",
+    "questCompleted": "✨ Congratulations on completing the quest!",
+    "examFailed": "😔 === Exam Failed === 😔",
+    "skillsBelowTarget": "⚠️ {count} skills below target",
+    "needMoreTime": "💡 Suggestion: Need more learning time",
+    "rewardReduced": "📉 Reputation reward reduced: {original} → {final} (-{percent}%)",
+    "examComplete": "Exam Complete",
+    "noSchedule": "✗ No schedule planned for today",
+    "noScheduleStatus": "No Schedule",
+    "dailySummary": "📊 Today's Progress:",
+    "coding": "Coding",
+    "math": "Math",
+    "body": "Body",
+    "energy": "Energy",
+    "mood": "Mood",
+    "dayComplete": "✅ Day Complete",
+    "complete": "Complete",
+    "cannotCalculateExam": "❌ Cannot calculate exam results",
+    "simulationRunning": "Running simulation...",
+    "simulationComplete": "Simulation Complete",
+    "simulatingAllStudents": "Simulating each student's day...",
+    "currentAbilities": "Current Abilities",
+    "days": "days"
   },
   "exam": {
     "title": "Exam Results",
@@ -129,5 +195,32 @@
     "save": "Save",
     "cancel": "Cancel",
     "languageChanged": "Language changed successfully"
+  },
+  "quests": {
+    "alice1": {
+      "character": "Diligent Student",
+      "description": "Help Alice improve her basic skills",
+      "personality": "Diligent"
+    },
+    "bob1": {
+      "character": "Lively Student",
+      "description": "Help Bob achieve balanced development",
+      "personality": "Lively"
+    },
+    "alice2": {
+      "character": "Intelligent Student",
+      "description": "Guide Alice to become an academic expert",
+      "personality": "Intelligent"
+    },
+    "alice3": {
+      "character": "Balanced Student",
+      "description": "Cultivate Alice into an all-round talent",
+      "personality": "Balanced"
+    },
+    "bob2": {
+      "character": "Athletic Genius",
+      "description": "Help Bob develop comprehensively",
+      "personality": "Active"
+    }
   }
 }

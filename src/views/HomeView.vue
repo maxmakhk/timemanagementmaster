@@ -10,8 +10,8 @@ const { t } = useI18n()
 const games = ref([
   {
     id: 'time-management',
-    name: 'Time Management Master',
-    description: '時間管理遊戲 - 指導學生達成學習目標',
+    name: t('home.timeManagementGame'),
+    description: t('home.timeManagementDesc'),
     icon: '📚',
     color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     route: '/time-management/schedule',
@@ -19,8 +19,8 @@ const games = ref([
   },
   {
     id: 'coming-soon-1',
-    name: 'Coming Soon',
-    description: '更多迷你遊戲即將推出...',
+    name: t('home.comingSoon'),
+    description: t('home.comingSoonDesc'),
     icon: '🎮',
     color: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
     route: null,
@@ -28,8 +28,8 @@ const games = ref([
   },
   {
     id: 'coming-soon-2',
-    name: 'Coming Soon',
-    description: '更多迷你遊戲即將推出...',
+    name: t('home.comingSoon'),
+    description: t('home.comingSoonDesc'),
     icon: '🎯',
     color: 'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)',
     route: null,
@@ -37,8 +37,8 @@ const games = ref([
   },
   {
     id: 'coming-soon-3',
-    name: 'Coming Soon',
-    description: '更多迷你遊戲即將推出...',
+    name: t('home.comingSoon'),
+    description: t('home.comingSoonDesc'),
     icon: '🎪',
     color: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
     route: null,
@@ -63,7 +63,7 @@ const loadGame = (game) => {
     if (savedData) {
       router.push(game.route)
     } else {
-      alert('沒有找到已保存的進度')
+      alert(t('home.noSavedProgress'))
     }
   }
 }
@@ -85,8 +85,8 @@ const goToSettings = () => {
     <!-- Main Content -->
     <div class="container">
       <div class="header">
-        <h1>🎮 Mini Game Collection</h1>
-        <p class="subtitle">選擇一個遊戲開始遊玩</p>
+        <h1>{{ $t('home.gameCollectionTitle') }}</h1>
+        <p class="subtitle">{{ $t('home.gameCollectionSubtitle') }}</p>
       </div>
 
       <!-- Game Grid -->
@@ -105,14 +105,14 @@ const goToSettings = () => {
           </div>
           <div class="game-actions" v-if="game.enabled">
             <button @click="startGame(game)" class="btn btn-start">
-              🎯 開始新遊戲
+              {{ $t('home.startNewGame') }}
             </button>
             <button @click="loadGame(game)" class="btn btn-load">
-              📂 載入進度
+              {{ $t('home.loadGame') }}
             </button>
           </div>
           <div class="game-actions" v-else>
-            <span class="coming-soon-label">即將推出</span>
+            <span class="coming-soon-label">{{ $t('home.comingSoonLabel') }}</span>
           </div>
         </div>
       </div>

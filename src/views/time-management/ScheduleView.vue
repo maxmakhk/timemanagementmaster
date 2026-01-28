@@ -104,6 +104,23 @@ const currentNPCDay = computed(() => {
   return npcCurrentDays[currentNPC.value.id] || 0
 })
 
+// Current NPC character image (changes with quest)
+const currentCharacterImage = computed(() => {
+  if (!currentNPC.value) return '/images/time-management/Alice_rest.png'
+  const characters = ['Alice', 'Bob']
+  const activities = ['codingClass', 'mathStudy', 'fitnessTraining', 'lunch', 'rest']
+  const npcName = currentNPC.value.name
+  const randomActivity = activities[Math.floor(Math.random() * activities.length)]
+  return `/images/time-management/${npcName}_${randomActivity}.png`
+})
+
+// Current NPC background (changes with quest)
+const currentBackground = computed(() => {
+  const backgrounds = ['bg_codingClass.jpg', 'bg_mathStudy.jpg', 'bg_fitnessTraining.jpg', 'bg_lunch.jpg', 'bg_rest.jpg']
+  const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)]
+  return `/images/time-management/${randomBg}`
+})
+
 // 被拖動的卡片
 const draggedCard = ref(null)
 
@@ -137,14 +154,14 @@ const selectNPC = (npc) => {
 const dropOnSlot = (dayIndex, slotIndex, applyToAllDays = false) => {
   // Check if there's a current NPC selected
   if (!currentNPC.value) {
-    alert('Please select or add an NPC mission first!')
+    alert(t('schedule.selectNPCFirst'))
     draggedCard.value = null
     return
   }
   
   // 檢查是否已經過了這一天，如果是則不允許編輯
   if (dayIndex < currentNPCDay.value) {
-    alert('已過的天數無法編輯')
+    alert(t('schedule.pastDaysNoEdit'))
     draggedCard.value = null
     return
   }
@@ -186,7 +203,11 @@ const clickOnSlot = (dayIndex, slotIndex, event) => {
     // 提示用戶
     if (applyToAllDays) {
       const totalApplied = currentSchedule.value.length - dayIndex
-      console.log(`已將 ${selectedCard.value.name} 應用到 ${totalApplied} 天的 ${timeSlots[slotIndex]} 時段`)
+      console.log(t('schedule.appliedToMultipleDays', { 
+        card: selectedCard.value.name, 
+        count: totalApplied, 
+        timeSlot: timeSlots[slotIndex] 
+      }))
     }
   }
 }
@@ -196,7 +217,7 @@ const clickOnSlot = (dayIndex, slotIndex, event) => {
 const removeCard = (dayIndex, slotIndex) => {
   // 檢查是否已經過了這一天，如果是則不允許編輯
   if (dayIndex < currentNPCDay.value) {
-    alert('已過的天數無法編輯')
+    alert(t('schedule.pastDaysNoEdit'))
     return
   }
   
@@ -358,7 +379,7 @@ onUnmounted(() => {
 const startSimulation = () => {
   // 驗證至少有一個 NPC 被選擇
   if (selectedNPCs.value.length === 0) {
-    alert('請先選擇至少一個 NPC')
+    alert(t('schedule.selectAtLeastOneNPC'))
     return
   }
 
@@ -446,6 +467,16 @@ const startNewGame = () => {
 
 <template>
   <div class="schedule-view">
+    <!-- Home Button (Top Left) -->
+    <button @click="goBack" class="home-button">🏠</button>
+
+    <!-- 圖像展示區域 (視覺小說式背景和角色) -->
+    <div class="schedule-graphic-area" :style="{ backgroundImage: `url(${currentBackground})` }">
+      <div class="graphic-placeholder">
+        <img v-if="currentNPC" :src="currentCharacterImage" class="random-character" alt="Character">
+      </div>
+    </div>
+
     <!-- 頂部信息欄 -->
     <div class="schedule-header-bar">
       <div class="header-title">
@@ -453,17 +484,8 @@ const startNewGame = () => {
         <span class="header-subtitle">{{ $t('schedule.subtitle') }}</span>
       </div>
       <div v-if="currentNPC" class="header-info">
-        <span>{{ currentNPC.name }}</span>
-        <span class="deadline">截止: 第 {{ currentNPCDeadline }} 天 | 進度: 第 {{ currentDay + 1 }} 天</span>
-      </div>
-    </div>
-
-    <!-- 圖像展示區域 (預留給視覺小說式背景和角色) -->
-    <div class="schedule-graphic-area">
-      <!-- 這裡將來可以添加：背景圖、角色動畫、視覺效果等 -->
-      <div class="graphic-placeholder">
-        <span>{{ currentNPC?.image }}</span>
-        <p>{{ currentNPC?.name }} - {{ currentNPC?.character }}</p>
+        <span>{{ currentNPC.name }} - {{ $t(currentNPC.characterKey) }}</span>
+        <span class="deadline">{{ $t('schedule.deadline') }}: {{ $t('schedule.day') }} {{ currentNPCDeadline }} | {{ $t('schedule.progress') }}: {{ $t('schedule.day') }} {{ currentDay + 1 }}</span>
       </div>
     </div>
 
@@ -503,7 +525,7 @@ const startNewGame = () => {
                   </span>
                 </div>
               </div>
-              <p class="npc-description">{{ npc.description }}</p>
+              <p class="npc-description">{{ $t(npc.descriptionKey) }}</p>
               <div class="npc-goals">
                 <div class="goal-row">
                   <span class="goal-name">{{ $t('schedule.coding') }}</span>
@@ -546,8 +568,7 @@ const startNewGame = () => {
 
         <!-- 可用行程卡 -->
         <div class="cards-panel">
-          <h2>{{ $t('schedule.availableActivities') }}</h2>
-          <p class="cards-hint">{{ selectedCard ? selectedCard.name + ' | 點擊添加 | Shift+點擊 應用到所有天數' : '點擊選擇 或 拖拽添加' }}</p>
+          <p class="cards-hint">{{ selectedCard ? `${selectedCard.name} | ${$t('schedule.clickToAdd')} | ${$t('schedule.shiftClickApplyAll')}` : $t('schedule.clickSelectOrDrag') }}</p>
           <div class="cards-list">
             <div
               v-for="card in availableCards"
@@ -583,48 +604,59 @@ const startNewGame = () => {
           <p class="timetable-subtitle">{{ currentNPC?.description }}</p>
         </div>
         <div class="timetable">
-          <!-- 表頭 -->
+          <!-- 表頭 - 時間槽在頂部 -->
           <div class="timetable-header">
-            <div class="time-col"></div>
-            <div v-for="(day, dayIndex) in days" :key="day" class="day-col" :class="{ 
-              'past-day-header': dayIndex < currentNPCDay,
-              'today-header': dayIndex === currentNPCDay,
-              'future-day-header': dayIndex > currentNPCDay
-            }">
-              {{ day }}
-              <span v-if="dayIndex < currentNPCDay" class="day-status">✓ 已過</span>
-              <span v-else-if="dayIndex === currentNPCDay" class="day-status">📍 今天</span>
+            <div class="day-col"></div>
+            <div v-for="(slot, slotIndex) in timeSlots" :key="slotIndex" class="time-col">
+              {{ slot }}
             </div>
           </div>
 
-          <!-- 時間行 -->
-          <div v-for="(slot, slotIndex) in timeSlots" :key="slotIndex" class="timetable-row">
-            <div class="time-label">{{ slot }}</div>
+          <!-- 每日行 - 日期在左側 -->
+          <div v-for="(day, dayIndex) in days" :key="day" class="timetable-row" :class="{ 
+            'past-day-row': dayIndex < currentNPCDay,
+            'today-row': dayIndex === currentNPCDay,
+            'future-day-row': dayIndex > currentNPCDay,
+            'exam-day-row': dayIndex === currentNPCDeadline
+          }">
+            <div class="day-label" :class="{ 
+              'past-day-header': dayIndex < currentNPCDay,
+              'today-header': dayIndex === currentNPCDay,
+              'future-day-header': dayIndex > currentNPCDay,
+              'exam-day-header': dayIndex === currentNPCDeadline
+            }">
+              {{ day }}
+              <span v-if="dayIndex < currentNPCDay" class="day-status">{{ $t('schedule.dayPassed') }}</span>
+              <span v-else-if="dayIndex === currentNPCDay" class="day-status">{{ $t('schedule.dayToday') }}</span>
+            </div>
             <div
-              v-for="(day, dayIndex) in days"
+              v-for="(slot, slotIndex) in timeSlots"
               :key="`${dayIndex}-${slotIndex}`"
               class="schedule-cell"
               :class="{ 
                 'past-day': dayIndex < currentNPCDay,
                 'today': dayIndex === currentNPCDay,
                 'future-day': dayIndex > currentNPCDay,
-                'selected-slot': selectedCard && dayIndex >= currentNPCDay && !isShiftPressed
+                'exam-day': dayIndex === currentNPCDeadline,
+                'selected-slot': selectedCard && dayIndex >= currentNPCDay && dayIndex < currentNPCDeadline && !isShiftPressed
               }"
-              @drop="dropOnSlot(dayIndex, slotIndex)"
-              @dragover.prevent="(e) => allowDrop(e)"
-              @click="(e) => clickOnSlot(dayIndex, slotIndex, e)"
+              @drop="(event) => { if (dayIndex >= currentNPCDay && dayIndex < currentNPCDeadline) dropOnSlot(dayIndex, slotIndex) }"
+              @dragover.prevent="(event) => { if (dayIndex >= currentNPCDay && dayIndex < currentNPCDeadline) allowDrop(event) }"
+              @click="(event) => { if (dayIndex >= currentNPCDay && dayIndex < currentNPCDeadline) clickOnSlot(dayIndex, slotIndex, event) }"
             >
               <div
                 v-if="currentSchedule[dayIndex] && currentSchedule[dayIndex][slotIndex]"
                 class="scheduled-card"
                 :style="{ backgroundColor: currentSchedule[dayIndex][slotIndex].color }"
-                @click="dayIndex >= currentNPCDay && removeCard(dayIndex, slotIndex)"
-                :class="{ 'locked': dayIndex < currentNPCDay }"
-                :title="dayIndex < currentNPCDay ? '已過的天數無法編輯' : '點擊移除'"
+                @click="dayIndex >= currentNPCDay && dayIndex < currentNPCDeadline && removeCard(dayIndex, slotIndex)"
+                :class="{ 'locked': dayIndex < currentNPCDay || dayIndex === currentNPCDeadline }"
+                :title="dayIndex === currentNPCDeadline ? '考試日無法編輯' : dayIndex < currentNPCDay ? '已過的天數無法編輯' : '點擊移除'"
               >
                 {{ currentSchedule[dayIndex][slotIndex].name }}
               </div>
-              <div v-else class="empty-slot" :class="{ 'locked': dayIndex < currentNPCDay }">＋</div>
+              <div v-else class="empty-slot" :class="{ 'locked': dayIndex < currentNPCDay || dayIndex === currentNPCDeadline }">
+                {{ dayIndex === currentNPCDeadline ? '📝' : '＋' }}
+              </div>
             </div>
           </div>
         </div>
@@ -633,12 +665,6 @@ const startNewGame = () => {
 
     <!-- 底部操作按鈕 -->
     <div class="action-buttons">
-      <button @click="goBack" class="btn btn-secondary">
-        🏠 Home
-      </button>
-      <button @click="startNewGame" class="btn btn-danger">
-        🔄 New Game
-      </button>
       <button v-if="selectedNPCs.length > 0 && selectedNPCs.some(npc => !npcPassStatus[npc.id])" @click="startSimulation" class="btn btn-primary">
         {{ $t('schedule.startSimulation') }}
       </button>
@@ -652,17 +678,46 @@ const startNewGame = () => {
   flex-direction: column;
   height: 100vh;
   background: #f5f5f5;
+  position: relative;
 }
 
-/* 頂部信息欄 - 單行狀態欄 */
+.home-button {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  width: 45px;
+  height: 45px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.home-button:active {
+  transform: scale(0.95);
+}
+
+/* 頂部信息欄 - 單行狀態欄 (matches DaySimulationView header-info) */
 .schedule-header-bar {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 0.8rem 1.5rem;
+  padding: 0.5rem 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -670,17 +725,17 @@ const startNewGame = () => {
   display: flex;
   align-items: center;
   gap: 1rem;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .header-title strong {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   white-space: nowrap;
 }
 
 .header-subtitle {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   opacity: 0.9;
   white-space: nowrap;
 }
@@ -689,7 +744,7 @@ const startNewGame = () => {
   display: flex;
   align-items: center;
   gap: 1rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   white-space: nowrap;
 }
 
@@ -701,11 +756,12 @@ const startNewGame = () => {
   opacity: 0.9;
 }
 
-/* 圖像展示區域 - 30% 高度用於視覺小說式背景和角色 */
+/* 圖像展示區域 - 視覺小說式背景和角色 */
 .schedule-graphic-area {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  height: 25vh;
+  background-size: cover;
+  background-position: center;
+  height: 250px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -716,17 +772,21 @@ const startNewGame = () => {
 .graphic-placeholder {
   text-align: center;
   z-index: 1;
-  font-size: 4rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 1rem;
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
-.graphic-placeholder p {
-  font-size: 1rem;
-  margin: 0;
-  font-weight: 500;
+.random-character {
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
 }
 
 .schedule-header {
@@ -780,7 +840,8 @@ const startNewGame = () => {
   border-radius: 0.8rem;
   padding: 1rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: visible;
   display: flex;
   flex-direction: column;
 }
@@ -830,10 +891,31 @@ const startNewGame = () => {
 
 .npc-cards-list {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0.8rem;
-  flex: 1;
-  overflow-y: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.npc-cards-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.npc-cards-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.npc-cards-list::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 3px;
+}
+
+.npc-cards-list::-webkit-scrollbar-thumb:hover {
+  background: #5568d3;
 }
 
 .npc-mission-card {
@@ -843,13 +925,37 @@ const startNewGame = () => {
   background: #f9f9ff;
   transition: all 0.3s ease;
   cursor: pointer;
-  min-height: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 280px;
+  flex-shrink: 0;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .npc-mission-card:hover {
   border-color: #667eea;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.npc-mission-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.npc-mission-card::-webkit-scrollbar-track {
+  background: #f9f9ff;
+  border-radius: 3px;
+}
+
+.npc-mission-card::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+.npc-mission-card::-webkit-scrollbar-thumb:hover {
+  background: #999;
 }
 
 .npc-mission-card.active {
@@ -996,7 +1102,7 @@ const startNewGame = () => {
 }
 
 .npc-status {
-  display: flex;
+  display: none;
   gap: 1rem;
   padding: 0.6rem;
   background: #f0f0ff;
@@ -1004,6 +1110,11 @@ const startNewGame = () => {
   font-size: 0.75rem;
   font-weight: 600;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.npc-mission-card.active .npc-status {
+  display: flex;
 }
 
 .status-item {
@@ -1021,6 +1132,7 @@ const startNewGame = () => {
   color: white;
   border-radius: 0.3rem;
   display: none;
+  flex-shrink: 0;
 }
 
 .npc-mission-card.active .npc-reward {
@@ -1032,15 +1144,14 @@ const startNewGame = () => {
   background: white;
   border-radius: 0.8rem;
   padding: 1rem;
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: visible;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-}
-
-.cards-panel h2 {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
+  position: sticky;
+  top: 80px;
+  z-index: 10;
 }
 
 .cards-hint {
@@ -1052,18 +1163,42 @@ const startNewGame = () => {
 
 .cards-list {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0.8rem;
-  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.cards-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.cards-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.cards-list::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 3px;
+}
+
+.cards-list::-webkit-scrollbar-thumb:hover {
+  background: #5568d3;
 }
 
 .card {
-  padding: 0.4rem 0.6rem;
+  padding: 0.6rem 0.8rem;
   border-radius: 0.5rem;
   color: white;
   cursor: pointer;
   user-select: none;
   transition: all 0.2s;
+  min-width: 180px;
+  flex-shrink: 0;
   border: 3px solid transparent;
 }
 
@@ -1158,34 +1293,42 @@ const startNewGame = () => {
 
 .timetable-header {
   display: grid;
-  grid-template-columns: 80px repeat(50, 120px);
+  grid-template-columns: 80px repeat(6, 60px);
   gap: 1px;
   background: #667eea;
   padding: 1px;
   border-radius: 0.3rem;
   margin-bottom: 1px;
   min-width: min-content;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .time-col {
   background: #667eea;
   color: white;
   font-weight: 600;
+  padding: 0.4rem;
+  font-size: 0.75rem;
+  width: 60px;
+  min-width: 60px;
+  text-align: center;
 }
 
-.day-col {
+.day-label {
   background: #667eea;
   color: white;
   font-weight: 600;
-  padding: 0.5rem;
+  padding: 0.4rem 0.3rem;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  min-width: 120px;
-  width: 120px;
+  gap: 0.2rem;
+  min-width: 80px;
+  width: 80px;
 }
 
 .day-col.past-day-header {
@@ -1202,6 +1345,20 @@ const startNewGame = () => {
   background: #667eea;
 }
 
+.day-label.past-day-header {
+  background: #c0c0c0;
+  opacity: 0.7;
+}
+
+.day-label.today-header {
+  background: #ffc107;
+  color: #333;
+}
+
+.day-label.future-day-header {
+  background: #667eea;
+}
+
 .day-status {
   font-size: 0.7rem;
   opacity: 0.9;
@@ -1210,25 +1367,27 @@ const startNewGame = () => {
 
 .timetable-row {
   display: grid;
-  grid-template-columns: 80px repeat(50, 120px);
+  grid-template-columns: 80px repeat(6, 60px);
   gap: 1px;
   min-width: min-content;
 }
 
 .time-label {
   background: #f0f0f0;
-  padding: 0.5rem;
+  padding: 0.4rem;
   font-weight: 600;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  width: 80px;
+  min-width: 80px;
 }
 
 .schedule-cell {
   background: white;
   border: 2px dashed #ddd;
-  min-height: 60px;
-  min-width: 120px;
-  width: 120px;
+  min-height: 50px;
+  min-width: 60px;
+  width: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1282,6 +1441,29 @@ const startNewGame = () => {
 .schedule-cell.future-day:hover {
   background: #f0f0ff;
   border-color: #667eea;
+}
+
+/* 考試日 - 禁用編輯 */
+.schedule-cell.exam-day {
+  background: #fff3cd;
+  border-color: #ff9800;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.schedule-cell.exam-day:hover {
+  background: #fff3cd;
+  border-color: #ff9800;
+  box-shadow: none;
+}
+
+.exam-day-header {
+  background: #ff9800;
+  color: white;
+}
+
+.exam-day-row {
+  opacity: 0.9;
 }
 
 .empty-slot {
@@ -1368,4 +1550,124 @@ const startNewGame = () => {
   transform: translateY(-2px);
   box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
 }
+
+/* Responsive Design for Mobile and Small Screens */
+@media screen and (max-width: 1200px) {
+  .schedule-container {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  
+  .left-panels {
+    grid-template-columns: 1fr;
+    height: auto;
+    max-height: 50vh;
+    overflow: visible;
+  }
+  
+  .timetable-panel {
+    width: 100%;
+    flex-shrink: 0;
+    min-height: 500px;
+    flex: none;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .schedule-graphic-area {
+    height: 180px;
+  }
+  
+  .random-character {
+    height: 180px;
+  }
+  
+  .schedule-header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+  
+  .header-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .left-panels {
+    max-height: none;
+    overflow: visible;
+  }
+  
+  .npc-panel, .cards-panel {
+    max-height: 300px;
+    flex-shrink: 0;
+  }
+  
+  .timetable-panel {
+    min-height: 450px;
+    flex: none;
+  }
+  
+  .timetable {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .day-col {
+    min-width: 100px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .action-buttons button {
+    width: 100%;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .schedule-graphic-area {
+    height: 150px;
+  }
+  
+  .random-character {
+    height: 150px;
+  }
+  
+  .schedule-header-bar {
+    font-size: 0.8rem;
+  }
+  
+  .header-title strong {
+    font-size: 0.9rem;
+  }
+  
+  .npc-panel, .cards-panel {
+    max-height: 250px;
+  }
+  
+  .card {
+    min-width: 150px;
+    font-size: 0.85rem;
+  }
+  
+  .day-col {
+    min-width: 80px;
+    font-size: 0.75rem;
+  }
+  
+  .time-label {
+    font-size: 0.75rem;
+  }
+  
+  .card-name {
+    font-size: 0.75rem;
+  }
+}
 </style>
+

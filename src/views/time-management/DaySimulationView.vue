@@ -18,7 +18,7 @@ const selectedNPCId = ref(null) // Currently selected NPC tab
 
 // Header animation state
 const headerTimeLabel = ref('')
-const runTime = 100;
+const runTime = 1000;
 const currentActivity = ref(null) // Track current activity for header images
 
 // Simulation state
@@ -90,13 +90,13 @@ const headerTitle = computed(() => {
   const totalDays = selectedMaxDays.value
   const timeLabel = headerTimeLabel.value || ''
   const timePart = timeLabel ? `Day ${dayIndex} ${timeLabel}` : `Day ${dayIndex}`
-  return `${t('day.title')} - ${timePart} / ${totalDays} 天 (${npcName})`
+  return `${t('day.title')} - ${timePart} / ${totalDays} ${t('day.days')} (${npcName})`
 })
 
 // Header background and character images
 const headerBackgroundImage = computed(() => {
   if (!currentActivity.value || !currentActivity.value.bgImage) {
-    return '/images/time-management/bg_default.png'
+    return '/images/time-management/bg_rest.jpg'
   }
   return currentActivity.value.bgImage
 })
@@ -106,7 +106,7 @@ const headerCharacterImage = computed(() => {
   const npcName = selectedNPC.value.name
   
   if (!currentActivity.value || !currentActivity.value.activityKey) {
-    return `/images/time-management/${npcName}_default.png`
+    return `/images/time-management/${npcName}_rest.png`
   }
   
   return `/images/time-management/${npcName}_${currentActivity.value.activityKey}.png`
@@ -190,7 +190,7 @@ onMounted(() => {
     // Auto-start simulation
     startAllNPCSimulations()
   } else {
-    alert('無法載入模擬數據')
+    alert(t('day.cannotLoadData'))
     router.push('/time-management/schedule')
   }
 })
@@ -198,12 +198,32 @@ onMounted(() => {
 // Helper function to delay execution
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
+// Map translated activity names back to English names for lookup
+const getActivityKeyFromDisplayName = (displayName) => {
+  const activityMap = {
+    '編程課': 'Coding Class',
+    'Coding Class': 'Coding Class',
+    '數學學習': 'Math Study',
+    'Math Study': 'Math Study',
+    '健身訓練': 'Fitness',
+    'Fitness Training': 'Fitness',
+    'Fitness': 'Fitness',
+    '休息': 'Rest',
+    'Rest': 'Rest',
+    '午餐': 'Lunch',
+    'Lunch': 'Lunch'
+  }
+  return activityMap[displayName] || displayName
+}
+
 // Process a single activity for an NPC
 const processActivity = async (npc, item, npcLogs, abilities) => {
   npcLogs.push(`⏰ ${item.time} - ${item.activity}`)
   
   // 獲取活動的定義（用來查詢成本）
-  const activityDef = getActivityByName(item.activity)
+  // Convert display name to activity name for lookup
+  const activityName = getActivityKeyFromDisplayName(item.activity)
+  const activityDef = getActivityByName(activityName)
   
   // Update current activity for header display
   currentActivity.value = activityDef || null
@@ -214,12 +234,12 @@ const processActivity = async (npc, item, npcLogs, abilities) => {
   if (activityDef?.isRest) {
     abilities.energy = 100
     abilities.mood = 100
-    npcLogs.push(`  ✓ 精力恢復至 100`)
-    npcLogs.push(`  ✓ 心情恢復至 100`)
+    npcLogs.push(`  ${t('day.energyRestored')}`)
+    npcLogs.push(`  ${t('day.moodRestored')}`)
   } else if (item.activity === 'Lunch') {
     // 午餐只恢復能量，不消耗心情
     abilities.energy = Math.min(abilities.energy + 50, 100)
-    npcLogs.push(`  ✓ 精力 +50`)
+    npcLogs.push(`  ${t('day.energyGained', { amount: 50 })}`)
   } else {
     // 學習活動：計算效果並消耗資源
     const cost = activityDef?.cost || { energy: 30, mood: 50 }
@@ -231,31 +251,31 @@ const processActivity = async (npc, item, npcLogs, abilities) => {
     abilities.energy -= cost.energy
     abilities.mood -= cost.mood
     
-    npcLogs.push(`  📉 精力消耗 ${cost.energy} (${oldEnergy} → ${Math.max(abilities.energy, 0)})`)
-    npcLogs.push(`  📉 心情消耗 ${cost.mood} (${oldMood} → ${Math.max(abilities.mood, 0)})`)
+    npcLogs.push(`  ${t('day.energyConsumed', { amount: cost.energy, old: oldEnergy, new: Math.max(abilities.energy, 0) })}`)
+    npcLogs.push(`  ${t('day.moodConsumed', { amount: cost.mood, old: oldMood, new: Math.max(abilities.mood, 0) })}`)
     
     // 計算效率 - 如果能量或心情 <= 0，學習效果減半
     let efficiency = 1.0
     if (abilities.energy < 0 || abilities.mood < 0) {
       efficiency = 0.5
-      npcLogs.push(`  ⚠️ 能量或心情不足，學習效果降低 50%`)
+      npcLogs.push(`  ${t('day.lowEfficiency')}`)
     }
     
     // 應用學習效果
     if (item.effect.coding) {
       const gain = Math.floor(item.effect.coding * efficiency)
       gains.coding = gain
-      npcLogs.push(`  ✓ 編程能力 +${gain}`)
+      npcLogs.push(`  ${t('day.codingGained', { amount: gain })}`)
     }
     if (item.effect.math) {
       const gain = Math.floor(item.effect.math * efficiency)
       gains.math = gain
-      npcLogs.push(`  ✓ 數學能力 +${gain}`)
+      npcLogs.push(`  ${t('day.mathGained', { amount: gain })}`)
     }
     if (item.effect.fitness) {
       const gain = Math.floor(item.effect.fitness * efficiency)
       gains.fitness = gain
-      npcLogs.push(`  ✓ 身體素質 +${gain}`)
+      npcLogs.push(`  ${t('day.fitnessGained', { amount: gain })}`)
     }
   }
   
@@ -271,7 +291,7 @@ const simulateNPCDay = async (npc, npcIndex) => {
   // Switch to this NPC's tab
   selectedNPCId.value = npc.id
   currentSimulatingNPCIndex.value = npcIndex
-  headerTimeLabel.value = '準備中'
+  headerTimeLabel.value = t('day.preparing')
   
   // Get this NPC's current day
   const npcCurrentDay = simulationData.value.npcCurrentDays?.[npc.id] ?? 0
@@ -293,7 +313,7 @@ const simulateNPCDay = async (npc, npcIndex) => {
   const npcLogs = logs.value[npc.id]
   
   // 開始日誌
-  npcLogs.push(`📅 第 ${npcCurrentDay + 1} 天 - ${npc.name} 的日程`)
+  npcLogs.push(t('day.daySchedule', { day: npcCurrentDay + 1, name: npc.name }))
   npcLogs.push('---')
   
   await delay(500) // Initial delay
@@ -322,52 +342,56 @@ const simulateNPCDay = async (npc, npcIndex) => {
   
   if (isNPCExamDay) {
     // This is exam day - show exam instead of regular schedule
-    npcLogs.push('📝 今天是考試日！')
+    npcLogs.push(t('day.examDay'))
     npcLogs.push('---')
-    headerTimeLabel.value = '考試中'
+    headerTimeLabel.value = t('day.examInProgress')
     
     await delay(runTime)
     
     // Calculate and show exam results
     const examResults = calculateExamResults()
     if (examResults) {
-      npcLogs.push('🎓 === 考試結果 === 🎓')
+      npcLogs.push(t('day.examResults'))
       npcLogs.push('---')
-      npcLogs.push(`📋 考試嘗試次數: #${examResults.examAttempt}`)
+      npcLogs.push(t('day.examAttempt', { attempt: examResults.examAttempt }))
       npcLogs.push('---')
-      npcLogs.push('📊 技能評估：')
+      npcLogs.push(t('day.skillAssessment'))
       
       examResults.skillResults.forEach(skill => {
-        const status = skill.passed ? '✅ 通過' : '❌ 未通過'
+        const status = skill.passed ? t('day.passed') : t('day.failed')
         const bar = '█'.repeat(Math.floor(skill.percentage / 10)) + '░'.repeat(10 - Math.floor(skill.percentage / 10))
         npcLogs.push(`  ${skill.emoji} ${skill.name}: ${skill.current}/${skill.goal} (${skill.percentage}%) ${status}`)
         npcLogs.push(`     ${bar}`)
       })
       
       npcLogs.push('---')
-      npcLogs.push(`📈 總體通過率: ${examResults.passedSkills}/3 技能`)
+      npcLogs.push(t('day.overallPassRate', { passed: examResults.passedSkills }))
       
       if (examResults.passed) {
-        npcLogs.push('🎉 === 考試通過！ === 🎉')
-        npcLogs.push(`🏆 獲得聲望: ${examResults.finalReward}`)
-        npcLogs.push('✨ 恭喜完成任務！')
+        npcLogs.push(t('day.examPassed'))
+        npcLogs.push(t('day.reputationGained', { amount: examResults.finalReward }))
+        npcLogs.push(t('day.questCompleted'))
       } else {
-        npcLogs.push('😔 === 考試未通過 === 😔')
-        npcLogs.push(`⚠️ ${3 - examResults.passedSkills} 個技能未達標`)
-        npcLogs.push('💡 建議：需要更多學習時間')
+        npcLogs.push(t('day.examFailed'))
+        npcLogs.push(t('day.skillsBelowTarget', { count: 3 - examResults.passedSkills }))
+        npcLogs.push(t('day.needMoreTime'))
         if (examResults.examAttempt > 1) {
-          npcLogs.push(`📉 聲望獎勵已降低: ${examResults.originalReward} → ${examResults.finalReward} (-${Math.round((1 - examResults.finalReward / examResults.originalReward) * 100)}%)`)
+          npcLogs.push(t('day.rewardReduced', { 
+            original: examResults.originalReward, 
+            final: examResults.finalReward, 
+            percent: Math.round((1 - examResults.finalReward / examResults.originalReward) * 100) 
+          }))
         }
       }
       
       npcLogs.push('---')
     }
     
-    headerTimeLabel.value = '考試完成'
+    headerTimeLabel.value = t('day.examComplete')
     await delay(runTime)
   } else if (scheduleItems.length === 0) {
-    npcLogs.push('✗ 今天沒有安排行程')
-    headerTimeLabel.value = '無行程'
+    npcLogs.push(t('day.noSchedule'))
+    headerTimeLabel.value = t('day.noScheduleStatus')
     await delay(runTime)
   } else {
     let totalCoding = 0
@@ -391,17 +415,17 @@ const simulateNPCDay = async (npc, npcIndex) => {
     }
     
     npcLogs.push('---')
-    npcLogs.push(`📊 今日總進度：`)
-    npcLogs.push(`  編程：${abilities.coding - totalCoding} → ${abilities.coding}`)
-    npcLogs.push(`  數學：${abilities.math - totalMath} → ${abilities.math}`)
-    npcLogs.push(`  身體：${abilities.fitness - totalFitness} → ${abilities.fitness}`)
-    npcLogs.push(`  精力：${abilities.energy}`)
-    npcLogs.push(`  心情：${abilities.mood}`)
+    npcLogs.push(t('day.dailySummary'))
+    npcLogs.push(`  ${t('day.coding')}：${abilities.coding - totalCoding} → ${abilities.coding}`)
+    npcLogs.push(`  ${t('day.math')}：${abilities.math - totalMath} → ${abilities.math}`)
+    npcLogs.push(`  ${t('day.body')}：${abilities.fitness - totalFitness} → ${abilities.fitness}`)
+    npcLogs.push(`  ${t('day.energy')}：${abilities.energy}`)
+    npcLogs.push(`  ${t('day.mood')}：${abilities.mood}`)
     
     await delay(runTime)
     
-    npcLogs.push('✅ 一天結束')
-    headerTimeLabel.value = '完成'
+    npcLogs.push(t('day.dayComplete'))
+    headerTimeLabel.value = t('day.complete')
   }
   
   // Update this NPC's current day
@@ -509,33 +533,31 @@ const showExamResults = () => {
     if (!logs.value[currentNPC.value?.id]) {
       logs.value[currentNPC.value.id] = []
     }
-    logs.value[currentNPC.value.id].push('❌ 無法計算考試結果')
+    logs.value[currentNPC.value.id].push(t('day.cannotCalculateExam'))
     return
   }
   
   const npcLogs = logs.value[currentNPC.value.id]
   
   npcLogs.push('---')
-  npcLogs.push('🎓 === 考試結果 === 🎓')
+  npcLogs.push(t('day.examResults'))
   npcLogs.push('---')
-  npcLogs.push(`📋 考試嘗試次數: #${examResults.examAttempt}`)
+  npcLogs.push(t('day.examAttempt', { attempt: examResults.examAttempt }))
   npcLogs.push('---')
-  npcLogs.push('📊 技能評估：')
+  npcLogs.push(t('day.skillAssessment'))
   
   examResults.skillResults.forEach(skill => {
-    const status = skill.passed ? '✅ 通過' : '❌ 未通過'
-    const bar = '█'.repeat(Math.floor(skill.percentage / 10)) + '░'.repeat(10 - Math.floor(skill.percentage / 10))
+        const status = skill.passed ? t('day.passed') : t('day.failed')
     npcLogs.push(`  ${skill.emoji} ${skill.name}: ${skill.current}/${skill.goal} (${skill.percentage}%) ${status}`)
     npcLogs.push(`     ${bar}`)
   })
   
   npcLogs.push('---')
-  npcLogs.push(`📈 總體通過率: ${examResults.passedSkills}/3 技能`)
-  
+  npcLogs.push(t('day.overallPassRate', { passed: examResults.passedSkills }))
   if (examResults.passed) {
-    npcLogs.push('🎉 === 考試通過！ === 🎉')
-    npcLogs.push(`🏆 獲得聲望: ${examResults.finalReward}`)
-    npcLogs.push('✨ 恭喜完成任務！')
+    npcLogs.push(t('day.examPassed'))
+    npcLogs.push(t('day.reputationGained', { amount: examResults.finalReward }))
+    npcLogs.push(t('day.questCompleted'))
     
     // Mark quest as completed
     simulationData.value.completedQuests = simulationData.value.completedQuests || []
@@ -545,11 +567,15 @@ const showExamResults = () => {
       passed: true
     })
   } else {
-    npcLogs.push('😔 === 考試未通過 === 😔')
-    npcLogs.push(`⚠️ ${3 - examResults.passedSkills} 個技能未達標`)
-    npcLogs.push('💡 建議：需要更多學習時間')
+    npcLogs.push(t('day.examFailed'))
+    npcLogs.push(t('day.skillsBelowTarget', { count: 3 - examResults.passedSkills }))
+    npcLogs.push(t('day.needMoreTime'))
     if (examResults.examAttempt > 1) {
-      npcLogs.push(`📉 聲望獎勵已降低: ${examResults.originalReward} → ${examResults.finalReward} (-${Math.round((1 - examResults.finalReward / examResults.originalReward) * 100)}%)`)
+      npcLogs.push(t('day.rewardReduced', { 
+        original: examResults.originalReward, 
+        final: examResults.finalReward, 
+        percent: Math.round((1 - examResults.finalReward / examResults.originalReward) * 100) 
+      }))
     }
   }
   
@@ -651,24 +677,24 @@ const progressPercent = computed(() => {
       <div class="header-overlay"></div>
       <div class="header-content">
         <img v-if="headerCharacterImage" :src="headerCharacterImage" class="header-character" alt="Character">
-        <div class="header-info">
-          <h1 v-if="selectedNPC || currentNPC">
-            {{ headerTitle }}
-          </h1>
-          <div v-if="isSimulationRunning" class="simulation-status">
-            <span class="status-indicator running">⏳</span>
-            <span>正在運行中...</span>
-          </div>
-          <div v-else-if="simulationComplete" class="simulation-status">
-            <span class="status-indicator complete">✅</span>
-            <span>模擬完成</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress" :style="{ width: progressPercent + '%' }"></div>
-          </div>
-        </div>
       </div>
     </header>
+    <div class="header-info">
+      <strong v-if="selectedNPC || currentNPC">
+        {{ headerTitle }}
+      </strong>
+      <div v-if="isSimulationRunning" class="simulation-status">
+        <span class="status-indicator running">⏳</span>
+        <span>{{ $t('day.simulationRunning') }}</span>
+      </div>
+      <div v-else-if="simulationComplete" class="simulation-status">
+        <span class="status-indicator complete">✅</span>
+        <span>{{ $t('day.simulationComplete') }}</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress" :style="{ width: progressPercent + '%' }"></div>
+      </div>
+    </div>
 
     <div v-if="simulationData" class="simulation-container">
       <!-- NPC Tabs -->
@@ -686,14 +712,14 @@ const progressPercent = computed(() => {
       <!-- 狀態欄 for Selected NPC -->
       <div class="status-bar">
         <div class="status-item energy-bar">
-          <span class="status-label">⚡ 精力</span>
+          <span class="status-label">⚡ {{ $t('day.energy') }}</span>
           <div class="bar">
             <div class="fill" :style="{ width: selectedAbilities?.energy || 0 + '%', backgroundColor: selectedAbilities?.energy > 50 ? '#2ecc71' : selectedAbilities?.energy > 25 ? '#f39c12' : '#e74c3c' }"></div>
           </div>
           <span class="status-value">{{ selectedAbilities?.energy || 0 }}/100</span>
         </div>
         <div class="status-item mood-bar">
-          <span class="status-label">😊 心情</span>
+          <span class="status-label">😊 {{ $t('day.mood') }}</span>
           <div class="bar">
             <div class="fill" :style="{ width: selectedAbilities?.mood || 0 + '%', backgroundColor: selectedAbilities?.mood > 50 ? '#3498db' : selectedAbilities?.mood > 25 ? '#f39c12' : '#e74c3c' }"></div>
           </div>
@@ -715,38 +741,38 @@ const progressPercent = computed(() => {
 
         <!-- Abilities Section -->
         <div class="abilities-section">
-          <h2>📊 {{ selectedNPC?.name }} 當前能力值</h2>
+          <h2>📊 {{ selectedNPC?.name }} {{ $t('day.currentAbilities') }}</h2>
           <div class="abilities-grid">
             <div class="ability-card">
-              <div class="ability-name">📚 編程</div>
+              <div class="ability-name">📚 {{ $t('day.coding') }}</div>
               <div class="ability-bar">
                 <div class="ability-fill" :style="{ width: (selectedAbilities?.coding / 100 * 100) + '%' }"></div>
               </div>
               <div class="ability-value">{{ selectedAbilities?.coding || 0 }} / {{ selectedNPC?.goals?.coding || 0 }}</div>
             </div>
             <div class="ability-card">
-              <div class="ability-name">🔢 數學</div>
+              <div class="ability-name">🔢 {{ $t('day.math') }}</div>
               <div class="ability-bar">
                 <div class="ability-fill" :style="{ width: (selectedAbilities?.math / 100 * 100) + '%' }"></div>
               </div>
               <div class="ability-value">{{ selectedAbilities?.math || 0 }} / {{ selectedNPC?.goals?.math || 0 }}</div>
             </div>
             <div class="ability-card">
-              <div class="ability-name">💪 身體</div>
+              <div class="ability-name">💪 {{ $t('day.body') }}</div>
               <div class="ability-bar">
                 <div class="ability-fill" :style="{ width: (selectedAbilities?.fitness / 100 * 100) + '%' }"></div>
               </div>
               <div class="ability-value">{{ selectedAbilities?.fitness || 0 }} / {{ selectedNPC?.goals?.fitness || 0 }}</div>
             </div>
             <div class="ability-card">
-              <div class="ability-name">😊 心情</div>
+              <div class="ability-name">😊 {{ $t('day.mood') }}</div>
               <div class="ability-bar">
                 <div class="ability-fill" :style="{ width: (selectedAbilities?.mood || 0) + '%' }"></div>
               </div>
               <div class="ability-value">{{ selectedAbilities?.mood || 0 }}/100</div>
             </div>
             <div class="ability-card">
-              <div class="ability-name">⚡ 精力</div>
+              <div class="ability-name">⚡ {{ $t('day.energy') }}</div>
               <div class="ability-bar">
                 <div class="ability-fill" :style="{ width: (selectedAbilities?.energy || 0) + '%' }"></div>
               </div>
@@ -767,7 +793,7 @@ const progressPercent = computed(() => {
       </button>
       <div v-else-if="isSimulationRunning" class="simulation-message">
         <span class="spinner"></span>
-        正在模擬每位學生的一天...
+        {{ $t('day.simulatingAllStudents') }}
       </div>
     </div>
   </div>
@@ -786,21 +812,15 @@ const progressPercent = computed(() => {
   background-size: cover;
   background-position: center;
   color: white;
-  padding: 1.5rem;
+  padding: 0;
   position: relative;
-  min-height: 200px;
+  height: 250px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
 }
 
 .header-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.85) 0%, rgba(118, 75, 162, 0.85) 100%);
-  z-index: 1;
+  display: none;
 }
 
 .header-content {
@@ -808,41 +828,49 @@ const progressPercent = computed(() => {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 2rem;
+  justify-content: center;
+  gap: 0;
   width: 100%;
 }
 
 .header-character {
-  width: 150px;
-  height: 200px;
+  width: auto;
+  height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  flex-shrink: 0;
 }
 
 .header-info {
-  flex: 1;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.5rem 1rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-size: 0.85rem;
 }
 
-.simulation-header h1 {
+.header-info strong {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
 .simulation-status {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-  font-weight: 600;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .status-indicator {
-  font-size: 1.5rem;
+  font-size: 1rem;
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -856,11 +884,12 @@ const progressPercent = computed(() => {
 }
 
 .progress-bar {
-  width: 100%;
-  height: 8px;
+  width: 200px;
+  height: 6px;
   background: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .progress {
@@ -984,7 +1013,7 @@ const progressPercent = computed(() => {
 
 .abilities-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
 }
 
@@ -1132,5 +1161,98 @@ const progressPercent = computed(() => {
 .btn-secondary:hover {
   background: #e0e0e0;
   transform: translateY(-2px);
+}
+
+/* Responsive Design for Mobile */
+@media screen and (max-width: 768px) {
+  .header-info {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .header-info strong {
+    width: 100%;
+    font-size: 0.85rem;
+  }
+  
+  .simulation-status {
+    font-size: 0.8rem;
+  }
+  
+  .progress-bar {
+    width: 100%;
+  }
+  
+  .status-bar {
+    gap: 0.8rem;
+    padding: 0.8rem;
+  }
+  
+  .status-item {
+    gap: 0.6rem;
+  }
+  
+  .status-label {
+    min-width: 50px;
+    font-size: 0.95rem;
+  }
+  
+  .status-value {
+    font-size: 0.95rem;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .simulation-header {
+    height: 200px;
+  }
+  
+  .header-info {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+  
+  .header-info strong {
+    font-size: 0.8rem;
+  }
+  
+  .simulation-status {
+    font-size: 0.75rem;
+  }
+  
+  .status-bar {
+    padding: 0.6rem;
+    gap: 0.6rem;
+  }
+  
+  .status-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+  
+  .status-label {
+    min-width: auto;
+    font-size: 0.85rem;
+  }
+  
+  .status-item .bar {
+    width: 100%;
+    height: 16px;
+  }
+  
+  .status-value {
+    font-size: 0.85rem;
+  }
+  
+  .npc-tabs {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  
+  .npc-tab {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
 }
 </style>

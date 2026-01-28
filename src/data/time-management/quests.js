@@ -5,10 +5,10 @@ export const NPCQuests = [
   {
     id: 1,
     name: 'Alice',
-    character: '勤奮的學生',
+    characterKey: 'quests.alice1.character',
     difficulty: 'Easy',
-    description: '幫助 Alice 提升基礎技能',
-    personality: '勤奮',
+    descriptionKey: 'quests.alice1.description',
+    personalityKey: 'quests.alice1.personality',
     image: '👧',
     // 初始能力值
     initial: {
@@ -38,10 +38,10 @@ export const NPCQuests = [
   {
     id: 2,
     name: 'Bob',
-    character: '活潑的學生',
+    characterKey: 'quests.bob1.character',
     difficulty: 'Normal',
-    description: '協助 Bob 達到均衡發展',
-    personality: '活潑',
+    descriptionKey: 'quests.bob1.description',
+    personalityKey: 'quests.bob1.personality',
     image: '👦',
     initial: {
       coding: 5,
@@ -65,11 +65,11 @@ export const NPCQuests = [
   },
   {
     id: 3,
-    name: 'Charlie',
-    character: '聰慧的學生',
+    name: 'Alice',
+    characterKey: 'quests.alice2.character',
     difficulty: 'Hard',
-    description: '指導 Charlie 成為學術高手',
-    personality: '聰慧',
+    descriptionKey: 'quests.alice2.description',
+    personalityKey: 'quests.alice2.personality',
     image: '🧑‍🎓',
     initial: {
       coding: 8,
@@ -93,11 +93,11 @@ export const NPCQuests = [
   },
   {
     id: 4,
-    name: 'Diana',
-    character: '均衡的學生',
+    name: 'Alice',
+    characterKey: 'quests.alice3.character',
     difficulty: 'Hard',
-    description: '培養 Diana 成為全能人才',
-    personality: '均衡',
+    descriptionKey: 'quests.alice3.description',
+    personalityKey: 'quests.alice3.personality',
     image: '👩',
     initial: {
       coding: 6,
@@ -121,11 +121,11 @@ export const NPCQuests = [
   },
   {
     id: 5,
-    name: 'Emma',
-    character: '體育天才',
+    name: 'Bob',
+    characterKey: 'quests.bob2.character',
     difficulty: 'Normal',
-    description: '幫助 Emma 全面發展',
-    personality: '活躍',
+    descriptionKey: 'quests.bob2.description',
+    personalityKey: 'quests.bob2.personality',
     image: '🏃‍♀️',
     initial: {
       coding: 2,
