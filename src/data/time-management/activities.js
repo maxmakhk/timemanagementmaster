@@ -1,6 +1,4 @@
 // Activity card definitions for the Time Management game
-const baseUrl = import.meta.env.BASE_URL
-
 export const activityCards = [
   { 
     id: 1, 
@@ -8,7 +6,7 @@ export const activityCards = [
     effect: { coding: 5 }, 
     cost: { energy: 30, mood: 50 }, 
     color: '#3498db',
-    bgImage: baseUrl + 'images/time-management/bg_codingClass.jpg',
+    bgImage: 'images/time-management/bg_codingClass.jpg',
     activityKey: 'codingClass'
   },
   { 
@@ -17,7 +15,7 @@ export const activityCards = [
     effect: { math: 5 }, 
     cost: { energy: 30, mood: 50 }, 
     color: '#e74c3c',
-    bgImage: baseUrl + 'images/time-management/bg_mathStudy.jpg',
+    bgImage: 'images/time-management/bg_mathStudy.jpg',
     activityKey: 'mathStudy'
   },
   { 
@@ -26,7 +24,7 @@ export const activityCards = [
     effect: { fitness: 5 }, 
     cost: { energy: 30, mood: 50 }, 
     color: '#2ecc71',
-    bgImage: baseUrl + 'images/time-management/bg_fitnessTraining.jpg',
+    bgImage: 'images/time-management/bg_fitnessTraining.jpg',
     activityKey: 'fitnessTraining'
   },
   { 
@@ -35,7 +33,7 @@ export const activityCards = [
     effect: { energy: 100, mood: 100 }, 
     isRest: true, 
     color: '#f39c12',
-    bgImage: baseUrl + 'images/time-management/bg_rest.jpg',
+    bgImage: 'images/time-management/bg_rest.jpg',
     activityKey: 'rest'
   },
   { 
@@ -44,7 +42,7 @@ export const activityCards = [
     effect: { energy: 50 }, 
     cost: { energy: -50 },
     color: '#95a5a6',
-    bgImage: baseUrl + 'images/time-management/bg_lunch.jpg',
+    bgImage: 'images/time-management/bg_lunch.jpg',
     activityKey: 'lunch'
   },
 ]

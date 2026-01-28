@@ -100,11 +100,8 @@ const headerBackgroundImage = computed(() => {
   if (!currentActivity.value || !currentActivity.value.bgImage) {
     return baseUrl + 'images/time-management/bg_rest.jpg'
   }
-  // If bgImage starts with /, remove it and add baseUrl
-  const imagePath = currentActivity.value.bgImage.startsWith('/') 
-    ? currentActivity.value.bgImage.substring(1) 
-    : currentActivity.value.bgImage
-  return baseUrl + imagePath
+  // bgImage from activities.js doesn't have leading slash
+  return baseUrl + currentActivity.value.bgImage
 })
 
 const headerCharacterImage = computed(() => {
