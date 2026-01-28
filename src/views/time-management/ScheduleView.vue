@@ -7,6 +7,7 @@ import { activityCards } from '../../data/time-management/activities'
 
 const router = useRouter()
 const { t } = useI18n()
+const baseUrl = import.meta.env.BASE_URL
 
 // 示例：已選擇的 NPC（實際應從 store 傳入）
 // Start with empty list - users add NPCs via "Add Mission" button
@@ -69,7 +70,7 @@ const availableCards = computed(() => {
 const getCurrentCharacterImage = (activityKey) => {
   if (!currentNPC.value || !activityKey) return null
   const npcName = currentNPC.value.name.toLowerCase()
-  return `/images/${npcName}_${activityKey}.png`
+  return baseUrl + `images/${npcName}_${activityKey}.png`
 }
 
 // 為每個 NPC 維護獨立的時間表和當前能力值
@@ -106,19 +107,19 @@ const currentNPCDay = computed(() => {
 
 // Current NPC character image (changes with quest)
 const currentCharacterImage = computed(() => {
-  if (!currentNPC.value) return '/images/time-management/Alice_rest.png'
+  if (!currentNPC.value) return baseUrl + 'images/time-management/Alice_rest.png'
   const characters = ['Alice', 'Bob']
   const activities = ['codingClass', 'mathStudy', 'fitnessTraining', 'lunch', 'rest']
   const npcName = currentNPC.value.name
   const randomActivity = activities[Math.floor(Math.random() * activities.length)]
-  return `/images/time-management/${npcName}_${randomActivity}.png`
+  return baseUrl + `images/time-management/${npcName}_${randomActivity}.png`
 })
 
 // Current NPC background (changes with quest)
 const currentBackground = computed(() => {
   const backgrounds = ['bg_codingClass.jpg', 'bg_mathStudy.jpg', 'bg_fitnessTraining.jpg', 'bg_lunch.jpg', 'bg_rest.jpg']
   const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)]
-  return `/images/time-management/${randomBg}`
+  return baseUrl + `images/time-management/${randomBg}`
 })
 
 // 被拖動的卡片

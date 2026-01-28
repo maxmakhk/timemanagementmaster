@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getActivityByName } from '../../data/time-management/activities'
 
+const baseUrl = import.meta.env.BASE_URL
+
 const router = useRouter()
 const { t } = useI18n()
 
@@ -96,9 +98,13 @@ const headerTitle = computed(() => {
 // Header background and character images
 const headerBackgroundImage = computed(() => {
   if (!currentActivity.value || !currentActivity.value.bgImage) {
-    return '/images/time-management/bg_rest.jpg'
+    return baseUrl + 'images/time-management/bg_rest.jpg'
   }
-  return currentActivity.value.bgImage
+  // If bgImage starts with /, remove it and add baseUrl
+  const imagePath = currentActivity.value.bgImage.startsWith('/') 
+    ? currentActivity.value.bgImage.substring(1) 
+    : currentActivity.value.bgImage
+  return baseUrl + imagePath
 })
 
 const headerCharacterImage = computed(() => {
@@ -106,10 +112,10 @@ const headerCharacterImage = computed(() => {
   const npcName = selectedNPC.value.name
   
   if (!currentActivity.value || !currentActivity.value.activityKey) {
-    return `/images/time-management/${npcName}_rest.png`
+    return baseUrl + `images/time-management/${npcName}_rest.png`
   }
   
-  return `/images/time-management/${npcName}_${currentActivity.value.activityKey}.png`
+  return baseUrl + `images/time-management/${npcName}_${currentActivity.value.activityKey}.png`
 })
 
 // Get logs for the selected NPC
